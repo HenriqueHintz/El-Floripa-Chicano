@@ -243,7 +243,7 @@ export const FranchisePage: React.FC<FranchisePageProps> = ({ onBackToHome }) =>
                       required
                       value={formData.name}
                       onChange={handleInputChange}
-                      placeholder="Ex: Carlos Eduardo Silveira"
+                      placeholder="Nome e Sobrenome"
                       className="w-full px-3.5 py-2.5 rounded-xl bg-white border-2 border-[#001219] text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
                     />
                   </div>
@@ -275,7 +275,7 @@ export const FranchisePage: React.FC<FranchisePageProps> = ({ onBackToHome }) =>
                         required
                         value={formData.email}
                         onChange={handleInputChange}
-                        placeholder="carlos@exemplo.com"
+                        placeholder="seuemail@provedor.com"
                         className="w-full px-3.5 py-2.5 rounded-xl bg-white border-2 border-[#001219] text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
                       />
                     </div>
@@ -293,7 +293,7 @@ export const FranchisePage: React.FC<FranchisePageProps> = ({ onBackToHome }) =>
                         required
                         value={formData.city}
                         onChange={handleInputChange}
-                        placeholder="Ex: Florianópolis"
+                        placeholder="Sua cidade"
                         className="w-full px-3.5 py-2.5 rounded-xl bg-white border-2 border-[#001219] text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
                       />
                     </div>

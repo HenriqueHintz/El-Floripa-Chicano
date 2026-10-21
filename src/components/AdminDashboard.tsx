@@ -24,24 +24,37 @@ import {
   MapPin,
   Clock,
   LogOut,
-  Video
+  Video,
+  ShieldCheck,
+  KeyRound,
+  CheckCircle2,
+  AlertCircle,
+  Lock
 } from 'lucide-react';
 import { InstagramIcon as Instagram, WhatsAppIcon } from './Icons';
 import { Logo } from './Logo';
 import { AdminLogin } from './AdminLogin';
+import { 
+  getActiveSessionToken, 
+  verifySessionToken, 
+  destroySession, 
+  verifyPassword, 
+  updateAdminPassword, 
+  getActiveAdminHash 
+} from '../utils/security';
 
 interface AdminDashboardProps {
   onBackToHome: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) => {
-  // Authentication Guard
+  // Authentication Guard with Cryptographic Session Token Verification
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
-    return sessionStorage.getItem('elchicano_admin_auth') === 'true';
+    return Boolean(getActiveSessionToken());
   });
 
-  const [activeTab, setActiveTab] = useState<'leads' | 'gallery' | 'video'>('leads');
+  const [activeTab, setActiveTab] = useState<'leads' | 'gallery' | 'video' | 'security'>('leads');
   const [leads, setLeads] = useState<FranchiseLead[]>([]);
   const [galleryPosts, setGalleryPosts] = useState<D1GalleryPost[]>([]);
   const [isLoadingLeads, setIsLoadingLeads] = useState(true);
@@ -70,6 +83,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   });
   const [videoSaveStatus, setVideoSaveStatus] = useState<string>('');
 
+  // Security & Password Change State
+  const [pwdCurrent, setPwdCurrent] = useState('');
+  const [pwdNew, setPwdNew] = useState('');
+  const [pwdConfirm, setPwdConfirm] = useState('');
+  const [pwdStatus, setPwdStatus] = useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' });
+  const [isUpdatingPwd, setIsUpdatingPwd] = useState(false);
+
+  // Validate active cryptographic session on mount
+  useEffect(() => {
+    async function validateSession() {
+      const token = getActiveSessionToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        return;
+      }
+      const verified = await verifySessionToken(token);
+      if (!verified.valid) {
+        destroySession();
+        setIsAuthenticated(false);
+      }
+    }
+    validateSession();
+  }, []);
+
   // Load leads, gallery posts and video configuration
   useEffect(() => {
     if (isAuthenticated) {
@@ -78,10 +115,54 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   }, [isAuthenticated]);
 
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('elchicano_admin_auth');
-    }
+    destroySession();
     setIsAuthenticated(false);
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwdStatus({ type: '', message: '' });
+
+    if (!pwdCurrent) {
+      setPwdStatus({ type: 'error', message: 'Informe a senha atual de acesso.' });
+      return;
+    }
+
+    if (pwdNew.length < 8) {
+      setPwdStatus({ type: 'error', message: 'A nova senha deve possuir pelo menos 8 caracteres.' });
+      return;
+    }
+
+    if (pwdNew !== pwdConfirm) {
+      setPwdStatus({ type: 'error', message: 'A confirmação de senha não confere com a nova senha digitada.' });
+      return;
+    }
+
+    setIsUpdatingPwd(true);
+
+    try {
+      const activeHash = getActiveAdminHash();
+      const isCurrentValid = await verifyPassword(pwdCurrent, activeHash);
+
+      if (!isCurrentValid) {
+        setPwdStatus({ type: 'error', message: 'A senha atual informada está incorreta.' });
+        setIsUpdatingPwd(false);
+        return;
+      }
+
+      await updateAdminPassword(pwdNew);
+      setPwdCurrent('');
+      setPwdNew('');
+      setPwdConfirm('');
+      setPwdStatus({ 
+        type: 'success', 
+        message: 'Senha alterada com sucesso! O novo hash PBKDF2 com salt aleatório foi registrado com segurança.' 
+      });
+      setIsUpdatingPwd(false);
+    } catch (err: any) {
+      setPwdStatus({ type: 'error', message: err?.message || 'Erro ao atualizar senha.' });
+      setIsUpdatingPwd(false);
+    }
   };
 
   if (!isAuthenticated) {
@@ -307,6 +388,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 videoConfig.isEnabled ? 'bg-[#0A9396] text-white border border-[#001219]' : 'bg-white text-[#001219]/50 border border-[#001219]/20'
               }`}>
                 {videoConfig.isEnabled ? 'Ativo' : 'Oculto'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('security')}
+              className={`flex-1 md:w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-mono text-xs uppercase font-bold transition-all cursor-pointer border-2 shrink-0 ${
+                activeTab === 'security'
+                  ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[3px_3px_0px_#001219]'
+                  : 'bg-[#FAF5E8] text-[#001219]/70 border-[#001219]/15 hover:border-[#001219] hover:bg-white hover:text-[#001219]'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#005F73]" />
+                <span>Segurança & Senha</span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-white text-[#001219] border border-[#001219]/20">
+                PBKDF2
               </span>
             </button>
           </nav>
@@ -608,7 +707,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                     required
                     value={slotForm.media_url}
                     onChange={(e) => setSlotForm((prev) => ({ ...prev, media_url: e.target.value }))}
-                    placeholder="https://exemplo.com/foto-instagram-01.jpg"
+                    placeholder="https://sua-cdn.com/foto.jpg ou /images/..."
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
                   />
                 </div>
@@ -622,7 +721,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                     type="url"
                     value={slotForm.permalink || ''}
                     onChange={(e) => setSlotForm((prev) => ({ ...prev, permalink: e.target.value }))}
-                    placeholder="https://www.instagram.com/p/C-exemplo/"
+                    placeholder="https://www.instagram.com/p/..."
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
                   />
                 </div>
@@ -636,7 +735,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                     type="text"
                     value={slotForm.caption || ''}
                     onChange={(e) => setSlotForm((prev) => ({ ...prev, caption: e.target.value }))}
-                    placeholder="Ex: Tacos artesanais preparados no fogo vivo."
+                    placeholder="Legenda da publicação oficial..."
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
                   />
                 </div>
@@ -772,7 +871,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   type="text"
                   value={videoConfig.videoUrl}
                   onChange={(e) => setVideoConfig((prev) => ({ ...prev, videoUrl: e.target.value }))}
-                  placeholder="https://seusite.com/videos/apresentacao-franquia.mp4"
+                  placeholder="https://sua-cdn.com/videos/apresentacao-franquia.mp4"
                   className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
                 />
               </div>
@@ -786,7 +885,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   type="text"
                   value={videoConfig.posterUrl || ''}
                   onChange={(e) => setVideoConfig((prev) => ({ ...prev, posterUrl: e.target.value }))}
-                  placeholder="https://seusite.com/images/capa-video.webp"
+                  placeholder="https://sua-cdn.com/images/capa-video.webp"
                   className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
                 />
               </div>
@@ -800,7 +899,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   type="text"
                   value={videoConfig.title || ''}
                   onChange={(e) => setVideoConfig((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder="Ex: Conheça o Modelo de Franquia El Chicano"
+                  placeholder="Apresentação do Modelo de Franquia El Chicano"
                   className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
                 />
               </div>
@@ -824,6 +923,129 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
 
             </form>
 
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* TAB 4: SEGURANÇA & GOVERNANÇA DE SENHA */}
+        {/* ================================================================= */}
+        {activeTab === 'security' && (
+          <div className="max-w-4xl mx-auto flex flex-col gap-6 text-left">
+            {/* Header */}
+            <div className="pb-4 border-b-2 border-[#001219]/10">
+              <span className="font-mono text-[10px] text-[#CA6702] uppercase font-bold tracking-widest">
+                Proteção Criptográfica
+              </span>
+              <h2 className="font-display font-black text-2xl sm:text-3xl text-[#001219] uppercase">
+                Segurança & Credenciais de Acesso
+              </h2>
+            </div>
+
+            {/* Architecture Overview Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 rounded-2xl bg-white border-2 border-[#001219] shadow-[3px_3px_0px_#001219]">
+                <div className="flex items-center gap-2 text-[#0A9396] mb-1">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span className="font-mono text-[11px] uppercase font-black">Algoritmo</span>
+                </div>
+                <p className="font-sans font-bold text-sm text-[#001219]">PBKDF2-HMAC-SHA256</p>
+                <p className="font-mono text-[10px] text-[#001219]/60 mt-0.5">100.000 iterações com salt aleatório de 16 bytes</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white border-2 border-[#001219] shadow-[3px_3px_0px_#001219]">
+                <div className="flex items-center gap-2 text-[#005F73] mb-1">
+                  <Lock className="w-4 h-4" />
+                  <span className="font-mono text-[11px] uppercase font-black">Sessão Ativa</span>
+                </div>
+                <p className="font-sans font-bold text-sm text-[#001219]">Token Assinado Digitalmente</p>
+                <p className="font-mono text-[10px] text-[#001219]/60 mt-0.5">Expiração automática em 4 horas (sem texto puro)</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white border-2 border-[#001219] shadow-[3px_3px_0px_#001219]">
+                <div className="flex items-center gap-2 text-[#AE2012] mb-1">
+                  <KeyRound className="w-4 h-4" />
+                  <span className="font-mono text-[11px] uppercase font-black">Anti-Bruteforce</span>
+                </div>
+                <p className="font-sans font-bold text-sm text-[#001219]">Bloqueio Inteligente</p>
+                <p className="font-mono text-[10px] text-[#001219]/60 mt-0.5">Trava de segurança após 5 falhas consecutivas</p>
+              </div>
+            </div>
+
+            {/* Change Password Form */}
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border-3 border-[#001219] shadow-[6px_6px_0px_#001219]">
+              <h3 className="font-display font-black text-xl text-[#001219] uppercase mb-1">
+                Alterar Senha do Administrador
+              </h3>
+              <p className="font-mono text-xs text-[#001219]/60 mb-6">
+                Ao atualizar, um novo salt criptográfico exclusivo será gerado e a nova derivação de chave será salva.
+              </p>
+
+              {pwdStatus.message && (
+                <div className={`p-4 rounded-2xl border-2 mb-6 font-mono text-xs font-bold flex items-center gap-2 ${
+                  pwdStatus.type === 'success' 
+                    ? 'bg-[#0A9396]/10 border-[#0A9396] text-[#0A9396]' 
+                    : 'bg-[#AE2012]/10 border-[#AE2012] text-[#AE2012]'
+                }`}>
+                  {pwdStatus.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                  <span>{pwdStatus.message}</span>
+                </div>
+              )}
+
+              <form onSubmit={handlePasswordChange} className="flex flex-col gap-4 max-w-lg">
+                <div>
+                  <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
+                    Senha Atual de Acesso *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={pwdCurrent}
+                    onChange={(e) => setPwdCurrent(e.target.value)}
+                    placeholder="Digite a senha atual"
+                    className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
+                    Nova Senha Segura (Mínimo 8 caracteres) *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={pwdNew}
+                    onChange={(e) => setPwdNew(e.target.value)}
+                    placeholder="Mínimo 8 caracteres (letras, números, símbolos)"
+                    className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
+                    Confirmar Nova Senha *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={pwdConfirm}
+                    onChange={(e) => setPwdConfirm(e.target.value)}
+                    placeholder="Repita exatamente a nova senha"
+                    className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={isUpdatingPwd}
+                    className="py-3.5 px-6 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#001219] shadow-[4px_4px_0px_#001219] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                    <span>{isUpdatingPwd ? 'Derivando Hash Criptográfico...' : 'Atualizar Chave de Acesso'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 

@@ -113,6 +113,8 @@ export async function getLiveSettings(): Promise<Record<string, string>> {
 // Franchise Leads API (Cloudflare D1 + localStorage fallback)
 // -----------------------------------------------------------------------------
 
+import { getActiveSessionToken, sanitizeString } from '../utils/security';
+
 export interface FranchiseLead {
   id?: number | string;
   name: string;
@@ -130,8 +132,15 @@ export interface FranchiseLead {
 const LOCAL_STORAGE_LEADS_KEY = 'elchicano_d1_leads_store';
 
 export async function submitFranchiseLead(lead: FranchiseLead): Promise<{ success: boolean; id?: number | string }> {
-  const newLead: FranchiseLead = {
+  const sanitizedLead: FranchiseLead = {
     ...lead,
+    name: sanitizeString(lead.name),
+    email: sanitizeString(lead.email),
+    phone: sanitizeString(lead.phone),
+    city: sanitizeString(lead.city),
+    state: sanitizeString(lead.state),
+    capital: sanitizeString(lead.capital),
+    experience: sanitizeString(lead.experience || 'nao'),
     id: Date.now(),
     status: 'novo',
     created_at: new Date().toISOString(),
@@ -140,7 +149,7 @@ export async function submitFranchiseLead(lead: FranchiseLead): Promise<{ succes
   // 1. Always save in localStorage immediately (guaranteed instant persistence)
   try {
     const existing = JSON.parse(localStorage.getItem(LOCAL_STORAGE_LEADS_KEY) || '[]');
-    existing.unshift(newLead);
+    existing.unshift(sanitizedLead);
     localStorage.setItem(LOCAL_STORAGE_LEADS_KEY, JSON.stringify(existing));
   } catch (err) {
     console.error('Error saving lead to localStorage:', err);
@@ -151,22 +160,28 @@ export async function submitFranchiseLead(lead: FranchiseLead): Promise<{ succes
     const res = await fetch('/api/leads', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(lead),
+      body: JSON.stringify(sanitizedLead),
     });
     if (res.ok) {
       const data = await res.json();
-      return { success: true, id: data.id || newLead.id };
+      return { success: true, id: data.id || sanitizedLead.id };
     }
   } catch {
     // Return local success
   }
 
-  return { success: true, id: newLead.id };
+  return { success: true, id: sanitizedLead.id };
 }
 
 export async function getFranchiseLeads(): Promise<FranchiseLead[]> {
+  const token = getActiveSessionToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   try {
-    const res = await fetch('/api/leads');
+    const res = await fetch('/api/leads', { headers });
     if (res.ok) {
       const payload = await res.json();
       if (payload?.success && Array.isArray(payload.leads)) {
@@ -187,6 +202,12 @@ export async function getFranchiseLeads(): Promise<FranchiseLead[]> {
 }
 
 export async function updateFranchiseLeadStatus(id: number | string, status: string): Promise<boolean> {
+  const token = getActiveSessionToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   // Update in localStorage
   try {
     const existing: FranchiseLead[] = JSON.parse(localStorage.getItem(LOCAL_STORAGE_LEADS_KEY) || '[]');
@@ -198,8 +219,8 @@ export async function updateFranchiseLeadStatus(id: number | string, status: str
   try {
     await fetch('/api/leads', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, status }),
+      headers,
+      body: JSON.stringify({ id, status: sanitizeString(status) }),
     });
   } catch {}
 
@@ -260,9 +281,15 @@ export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
 
   // Update D1
   try {
+    const token = getActiveSessionToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch('/api/gallery', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(post),
     });
     return res.ok;
