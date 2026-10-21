@@ -1,0 +1,834 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  getFranchiseLeads, 
+  updateFranchiseLeadStatus, 
+  FranchiseLead, 
+  getD1GalleryPosts, 
+  saveD1GalleryPost, 
+  D1GalleryPost,
+  getFranchiseVideoConfig,
+  saveFranchiseVideoConfig,
+  FranchiseVideoConfig
+} from '../services/d1Api';
+import { 
+  Users, 
+  ExternalLink, 
+  Save, 
+  RefreshCw, 
+  Search, 
+  Download, 
+  Image as ImageIcon, 
+  Video as VideoIcon,
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+  LogOut,
+  Video
+} from 'lucide-react';
+import { InstagramIcon as Instagram, WhatsAppIcon } from './Icons';
+import { Logo } from './Logo';
+import { AdminLogin } from './AdminLogin';
+
+interface AdminDashboardProps {
+  onBackToHome: () => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) => {
+  // Authentication Guard
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('elchicano_admin_auth') === 'true';
+  });
+
+  const [activeTab, setActiveTab] = useState<'leads' | 'gallery' | 'video'>('leads');
+  const [leads, setLeads] = useState<FranchiseLead[]>([]);
+  const [galleryPosts, setGalleryPosts] = useState<D1GalleryPost[]>([]);
+  const [isLoadingLeads, setIsLoadingLeads] = useState(true);
+  const [leadFilter, setLeadFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Selected slot for editing in gallery
+  const [activeSlotNumber, setActiveSlotNumber] = useState<number>(1);
+  const [slotForm, setSlotForm] = useState<D1GalleryPost>({
+    slot_number: 1,
+    type: 'photo',
+    media_url: '',
+    thumbnail_url: '',
+    permalink: 'https://www.instagram.com/elchicanofloripa/',
+    caption: '',
+    is_active: 1,
+  });
+  const [saveStatus, setSaveStatus] = useState<string>('');
+
+  // Franchise Video Configuration
+  const [videoConfig, setVideoConfig] = useState<FranchiseVideoConfig>({
+    isEnabled: false,
+    videoUrl: '',
+    posterUrl: '',
+    title: 'Apresentação do Modelo El Chicano',
+  });
+  const [videoSaveStatus, setVideoSaveStatus] = useState<string>('');
+
+  // Load leads, gallery posts and video configuration
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated]);
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('elchicano_admin_auth');
+    }
+    setIsAuthenticated(false);
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <AdminLogin
+        onLoginSuccess={() => setIsAuthenticated(true)}
+        onBackToHome={onBackToHome}
+      />
+    );
+  }
+
+  const loadData = async () => {
+    setIsLoadingLeads(true);
+    try {
+      const [leadsData, postsData, vConfig] = await Promise.all([
+        getFranchiseLeads(),
+        getD1GalleryPosts(),
+        getFranchiseVideoConfig(),
+      ]);
+      setLeads(leadsData);
+      setGalleryPosts(postsData);
+      setVideoConfig(vConfig);
+
+      // Prepopulate slot 1 if exists
+      const slot1 = postsData.find((p) => p.slot_number === 1);
+      if (slot1) {
+        setSlotForm(slot1);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingLeads(false);
+    }
+  };
+
+  const handleStatusChange = async (id: number | string, newStatus: string) => {
+    await updateFranchiseLeadStatus(id, newStatus);
+    setLeads((prev) => prev.map((l) => (String(l.id) === String(id) ? { ...l, status: newStatus as any } : l)));
+  };
+
+  const handleSelectSlot = (slotNum: number) => {
+    setActiveSlotNumber(slotNum);
+    const existing = galleryPosts.find((p) => p.slot_number === slotNum);
+    if (existing) {
+      setSlotForm(existing);
+    } else {
+      setSlotForm({
+        slot_number: slotNum,
+        type: 'photo',
+        media_url: '',
+        thumbnail_url: '',
+        permalink: 'https://www.instagram.com/elchicanofloripa/',
+        caption: `Publicação do Slot #${slotNum}`,
+        is_active: 1,
+      });
+    }
+    setSaveStatus('');
+  };
+
+  const handleSaveSlot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!slotForm.media_url) {
+      alert('Informe a URL da imagem ou vídeo.');
+      return;
+    }
+
+    setSaveStatus('Salvando...');
+    try {
+      await saveD1GalleryPost({
+        ...slotForm,
+        slot_number: activeSlotNumber,
+      });
+      setSaveStatus('Salvo com sucesso!');
+      setTimeout(() => setSaveStatus(''), 3000);
+      loadData();
+    } catch {
+      setSaveStatus('Erro ao salvar');
+    }
+  };
+
+  const handleSaveVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setVideoSaveStatus('Salvando...');
+    try {
+      await saveFranchiseVideoConfig(videoConfig);
+      setVideoSaveStatus('Vídeo atualizado com sucesso no site!');
+      setTimeout(() => setVideoSaveStatus(''), 3000);
+    } catch {
+      setVideoSaveStatus('Erro ao salvar vídeo');
+    }
+  };
+
+  const exportLeadsCSV = () => {
+    if (leads.length === 0) return;
+    const headers = ['ID', 'Nome', 'WhatsApp', 'Email', 'Cidade', 'UF', 'Capital', 'Status', 'Data'];
+    const rows = leads.map((l) => [
+      l.id,
+      `"${l.name}"`,
+      `"${l.phone}"`,
+      `"${l.email}"`,
+      `"${l.city}"`,
+      `"${l.state}"`,
+      `"${l.capital}"`,
+      `"${l.status || 'novo'}"`,
+      `"${l.created_at || ''}"`,
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `leads-franquia-elchicano-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const filteredLeads = leads.filter((l) => {
+    const matchesFilter = leadFilter === 'all' || (l.status || 'novo') === leadFilter;
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = !query || 
+      l.name?.toLowerCase().includes(query) || 
+      l.city?.toLowerCase().includes(query) || 
+      l.email?.toLowerCase().includes(query) ||
+      l.phone?.includes(query);
+    return matchesFilter && matchesSearch;
+  });
+
+  return (
+    <div className="min-h-screen bg-[#FAF5E8] text-[#001219] flex flex-col md:flex-row relative selection:bg-[#EE9B00] selection:text-[#001219]">
+      
+      {/* Background Texture & Warm Ambient Glow (Matches FranchisePage) */}
+      <div 
+        className="fixed inset-0 bg-cover bg-center pointer-events-none opacity-[0.03] mix-blend-multiply"
+        style={{ backgroundImage: "url('/images/sections/texture-rupestre.webp')" }}
+      />
+      <div className="fixed top-0 right-0 w-[500px] h-[500px] rounded-full bg-[#EE9B00]/10 blur-[140px] pointer-events-none" />
+      <div className="fixed bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-[#005F73]/10 blur-[140px] pointer-events-none" />
+
+      {/* SIDEBAR NAVIGATION (Desktop & Mobile Responsive) */}
+      <aside className="w-full md:w-72 bg-white border-b-4 md:border-b-0 md:border-r-4 border-[#001219] p-4 sm:p-6 flex flex-col justify-between shrink-0 z-20 shadow-[4px_0px_0px_#001219]">
+        <div>
+          {/* Brand Header with Clean Logo */}
+          <div className="flex items-center justify-between md:justify-start gap-3.5 mb-6 md:mb-8 pb-4 md:pb-6 border-b-2 border-[#001219]/10">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-auto flex items-center justify-center shrink-0">
+                <Logo className="h-11 w-auto" />
+              </div>
+              <div className="flex flex-col text-left">
+                <h2 className="font-display font-black text-lg uppercase text-[#001219] leading-none tracking-tight">
+                  El Chicano
+                </h2>
+                <p className="font-mono text-xs uppercase font-bold text-[#CA6702] tracking-wider mt-1">
+                  Painel Gestão
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Mobile Logout Action */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="md:hidden p-2.5 rounded-xl bg-[#FAF5E8] hover:bg-[#AE2012]/15 text-[#AE2012] border-2 border-[#001219] text-xs font-mono transition-colors shadow-sm"
+              title="Encerrar Sessão"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Navigation Menu */}
+          <nav className="flex flex-row md:flex-col gap-2.5 overflow-x-auto pb-1 md:pb-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('leads')}
+              className={`flex-1 md:w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-mono text-xs uppercase font-bold transition-all cursor-pointer border-2 shrink-0 ${
+                activeTab === 'leads'
+                  ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[3px_3px_0px_#001219]'
+                  : 'bg-[#FAF5E8] text-[#001219]/70 border-[#001219]/15 hover:border-[#001219] hover:bg-white hover:text-[#001219]'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                <span>Leads Franquia</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                activeTab === 'leads' ? 'bg-[#001219] text-[#EE9B00]' : 'bg-white text-[#001219] border border-[#001219]/20'
+              }`}>
+                {leads.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('gallery')}
+              className={`flex-1 md:w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-mono text-xs uppercase font-bold transition-all cursor-pointer border-2 shrink-0 ${
+                activeTab === 'gallery'
+                  ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[3px_3px_0px_#001219]'
+                  : 'bg-[#FAF5E8] text-[#001219]/70 border-[#001219]/15 hover:border-[#001219] hover:bg-white hover:text-[#001219]'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Instagram className="w-4 h-4" />
+                <span>Feed Instagram</span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-white text-[#001219] border border-[#001219]/20">
+                7 Slots
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('video')}
+              className={`flex-1 md:w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-mono text-xs uppercase font-bold transition-all cursor-pointer border-2 shrink-0 ${
+                activeTab === 'video'
+                  ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[3px_3px_0px_#001219]'
+                  : 'bg-[#FAF5E8] text-[#001219]/70 border-[#001219]/15 hover:border-[#001219] hover:bg-white hover:text-[#001219]'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Video className="w-4 h-4" />
+                <span>Vídeo Franquia</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                videoConfig.isEnabled ? 'bg-[#0A9396] text-white border border-[#001219]' : 'bg-white text-[#001219]/50 border border-[#001219]/20'
+              }`}>
+                {videoConfig.isEnabled ? 'Ativo' : 'Oculto'}
+              </span>
+            </button>
+          </nav>
+        </div>
+
+        {/* Sidebar Bottom Actions (Desktop Only - Logout Only, No Voltar ao Site) */}
+        <div className="pt-4 md:pt-6 border-t-2 border-[#001219]/10 mt-4 md:mt-6 hidden md:flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[#AE2012] hover:bg-[#AE2012]/10 border-2 border-[#AE2012]/30 hover:border-[#AE2012] bg-[#FAF5E8] font-mono text-xs uppercase font-bold transition-all cursor-pointer shadow-sm"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Encerrar Sessão</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 p-4 sm:p-8 md:p-10 overflow-y-auto max-h-screen">
+        
+        {/* ================================================================= */}
+        {/* TAB 1: LEADS DE FRANQUIA */}
+        {/* ================================================================= */}
+        {activeTab === 'leads' && (
+          <div className="max-w-6xl mx-auto flex flex-col gap-6">
+            
+            {/* Header & Export Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b-2 border-[#001219]/10 text-left">
+              <div>
+                <span className="font-mono text-[10px] text-[#CA6702] uppercase font-bold tracking-widest">
+                  Gestão Comercial
+                </span>
+                <h2 className="font-display font-black text-2xl sm:text-3xl text-[#001219] uppercase">
+                  Leads de Prospecção de Franquia
+                </h2>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={loadData}
+                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#FAF5E8] text-[#001219] border-2 border-[#001219] shadow-[2px_2px_0px_#001219] font-mono text-xs uppercase font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Recarregar"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Atualizar</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={exportLeadsCSV}
+                  disabled={leads.length === 0}
+                  className="px-4 py-2 rounded-xl bg-[#0A9396] hover:bg-[#94D2BD] text-white hover:text-[#001219] border-2 border-[#001219] shadow-[3px_3px_0px_#001219] font-mono text-xs uppercase font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Exportar CSV</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border-2 border-[#001219] shadow-[4px_4px_0px_#001219]">
+              
+              {/* Search input */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#001219]/40" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar por nome, cidade, email ou telefone..."
+                  className="w-full pl-10 pr-4 py-2 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/20 text-xs font-sans text-[#001219] placeholder:text-[#001219]/40 focus:outline-none focus:border-[#EE9B00]"
+                />
+              </div>
+
+              {/* Status filter tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+                {['all', 'novo', 'em_contato', 'qualificado', 'negociacao', 'fechado'].map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setLeadFilter(status)}
+                    className={`px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      leadFilter === status
+                        ? 'bg-[#EE9B00] text-[#001219] font-black border-2 border-[#001219] shadow-[2px_2px_0px_#001219]'
+                        : 'bg-[#FAF5E8] text-[#001219]/70 border border-[#001219]/15 hover:border-[#001219] hover:text-[#001219]'
+                    }`}
+                  >
+                    {status === 'all' ? 'Todos' : status.replace('_', ' ')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Leads List / Responsive Cards */}
+            {isLoadingLeads ? (
+              <div className="py-16 text-center text-xs font-mono text-[#005F73]">
+                Carregando leads...
+              </div>
+            ) : filteredLeads.length === 0 ? (
+              <div className="py-16 text-center bg-white rounded-3xl border-3 border-[#001219] shadow-[6px_6px_0px_#001219] p-8">
+                <p className="font-display font-black text-xl text-[#001219] uppercase">Nenhum lead encontrado</p>
+                <p className="font-sans text-xs text-[#001219]/60 mt-1">
+                  Os interessados que preencherem o formulário na página de franquia aparecerão aqui automaticamente.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3.5">
+                {filteredLeads.map((lead) => {
+                  const whatsappClean = (lead.phone || '').replace(/\D/g, '');
+                  const whatsappLink = `https://wa.me/55${whatsappClean}?text=${encodeURIComponent(
+                    `Olá ${lead.name}! Sou especialista de expansão da Franquia El Chicano. Vi seu interesse para a região de ${lead.city}-${lead.state}. Podemos conversar?`
+                  )}`;
+
+                  return (
+                    <div 
+                      key={lead.id}
+                      className="bg-white border-3 border-[#001219] hover:border-[#EE9B00] rounded-2xl p-4 sm:p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 transition-all shadow-[4px_4px_0px_#001219] hover:-translate-y-0.5"
+                    >
+                      {/* Left: Contact Info */}
+                      <div className="flex flex-col gap-1 text-left w-full lg:w-auto">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="font-display font-black text-lg text-[#001219]">
+                            {lead.name}
+                          </h4>
+                          <span className="font-mono text-[9px] uppercase px-2 py-0.5 rounded-md bg-[#FAF5E8] border border-[#001219]/20 text-[#005F73] font-bold">
+                            {lead.capital}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-sans text-[#001219]/75 mt-1">
+                          <span className="flex items-center gap-1.5 font-medium">
+                            <Phone className="w-3.5 h-3.5 text-[#CA6702]" />
+                            {lead.phone}
+                          </span>
+                          <span className="flex items-center gap-1.5 font-medium">
+                            <Mail className="w-3.5 h-3.5 text-[#005F73]" />
+                            {lead.email}
+                          </span>
+                          <span className="flex items-center gap-1.5 font-medium">
+                            <MapPin className="w-3.5 h-3.5 text-[#CA6702]" />
+                            {lead.city} / {lead.state}
+                          </span>
+                          {lead.created_at && (
+                            <span className="flex items-center gap-1.5 text-[11px] font-mono text-[#001219]/50">
+                              <Clock className="w-3 h-3" />
+                              {new Date(lead.created_at).toLocaleDateString('pt-BR')} às {new Date(lead.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Actions and Status Selector */}
+                      <div className="flex items-center gap-2.5 w-full lg:w-auto justify-between lg:justify-end border-t lg:border-t-0 pt-3 lg:pt-0 border-[#001219]/10">
+                        <select
+                          value={lead.status || 'novo'}
+                          onChange={(e) => handleStatusChange(lead.id!, e.target.value)}
+                          className="bg-[#FAF5E8] border-2 border-[#001219] rounded-xl px-3 py-1.5 font-mono text-xs uppercase font-bold text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
+                        >
+                          <option value="novo">🟢 Novo</option>
+                          <option value="em_contato">🟡 Em Contato</option>
+                          <option value="qualificado">🔵 Qualificado</option>
+                          <option value="negociacao">🟣 Negociação</option>
+                          <option value="fechado">🏆 Fechado</option>
+                          <option value="descartado">⚪ Descartado</option>
+                        </select>
+
+                        <a
+                          href={whatsappLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3.5 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-mono text-xs uppercase font-black flex items-center gap-1.5 transition-all border-2 border-[#001219] shadow-[2px_2px_0px_#001219] hover:shadow-[3px_3px_0px_#001219]"
+                        >
+                          <WhatsAppIcon className="w-3.5 h-3.5" />
+                          <span>WhatsApp</span>
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* TAB 2: FEED INSTAGRAM (7 SLOTS QUE ALIMENTAM A GALERIA) */}
+        {/* ================================================================= */}
+        {activeTab === 'gallery' && (
+          <div className="max-w-6xl mx-auto flex flex-col gap-6">
+            
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b-2 border-[#001219]/10 text-left">
+              <div>
+                <span className="font-mono text-[10px] text-[#005F73] uppercase font-bold tracking-widest">
+                  Gestão Visual & Mídia
+                </span>
+                <h2 className="font-display font-black text-2xl sm:text-3xl text-[#001219] uppercase">
+                  Feed Instagram (7 Slots Dinâmicos)
+                </h2>
+                <p className="font-sans text-xs text-[#001219]/70 mt-1">
+                  Cadastre e edite as fotos, vídeos, legendas e links oficiais de cada um dos 7 slots que alimentam a galeria do site em tempo real.
+                </p>
+              </div>
+            </div>
+
+            {/* Slot Selector Strip (1 to 7) - Mobile Touch Friendly */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+              {[1, 2, 3, 4, 5, 6, 7].map((num) => {
+                const isCurrent = activeSlotNumber === num;
+                const slotData = galleryPosts.find((p) => p.slot_number === num);
+                const hasMedia = Boolean(slotData?.media_url);
+
+                return (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => handleSelectSlot(num)}
+                    className={`p-3 rounded-2xl border-2 text-left flex flex-col justify-between transition-all cursor-pointer ${
+                      isCurrent
+                        ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[4px_4px_0px_#001219] scale-102 font-bold'
+                        : hasMedia
+                        ? 'bg-white text-[#001219] border-2 border-[#001219] shadow-[2px_2px_0px_#001219] hover:border-[#EE9B00]'
+                        : 'bg-[#FAF5E8] text-[#001219]/60 border-2 border-dashed border-[#001219]/30 hover:border-[#001219]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[10px] uppercase font-black">
+                        Slot #{String(num).padStart(2, '0')}
+                      </span>
+                      {hasMedia && (
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#0A9396] border border-[#001219]" title="Mídia ativa" />
+                      )}
+                    </div>
+                    <p className="font-sans text-xs font-bold mt-2 truncate">
+                      {slotData?.caption || (hasMedia ? 'Preenchido' : 'Vazio')}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Slot Edit Form & Live Preview */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-5 sm:p-8 rounded-3xl border-3 border-[#001219] shadow-[6px_6px_0px_#001219]">
+              
+              {/* Form Column */}
+              <form onSubmit={handleSaveSlot} className="lg:col-span-7 flex flex-col gap-4 text-left">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display font-black text-xl text-[#001219] uppercase">
+                    Configurando Slot #{String(activeSlotNumber).padStart(2, '0')}
+                  </h3>
+                  <span className="font-mono text-[10px] text-[#005F73] uppercase font-bold">
+                    Alimenta @elchicanofloripa
+                  </span>
+                </div>
+
+                {/* Media Type Select */}
+                <div>
+                  <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
+                    Tipo de Mídia
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSlotForm((prev) => ({ ...prev, type: 'photo' }))}
+                      className={`flex-1 py-2 px-3 rounded-xl font-mono text-xs font-bold uppercase border-2 flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                        slotForm.type === 'photo'
+                          ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[2px_2px_0px_#001219]'
+                          : 'bg-[#FAF5E8] text-[#001219]/60 border-[#001219]/20 hover:border-[#001219]'
+                      }`}
+                    >
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      <span>Foto</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSlotForm((prev) => ({ ...prev, type: 'video' }))}
+                      className={`flex-1 py-2 px-3 rounded-xl font-mono text-xs font-bold uppercase border-2 flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                        slotForm.type === 'video'
+                          ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[2px_2px_0px_#001219]'
+                          : 'bg-[#FAF5E8] text-[#001219]/60 border-[#001219]/20 hover:border-[#001219]'
+                      }`}
+                    >
+                      <VideoIcon className="w-3.5 h-3.5" />
+                      <span>Vídeo</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Media URL */}
+                <div>
+                  <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
+                    URL da Imagem ou Vídeo (Link Direto / CDN / Storage) *
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    value={slotForm.media_url}
+                    onChange={(e) => setSlotForm((prev) => ({ ...prev, media_url: e.target.value }))}
+                    placeholder="https://exemplo.com/foto-instagram-01.jpg"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
+                  />
+                </div>
+
+                {/* Redirect Link (Instagram Permalink) */}
+                <div>
+                  <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
+                    Link de Redirecionamento (Post Oficial do Instagram)
+                  </label>
+                  <input
+                    type="url"
+                    value={slotForm.permalink || ''}
+                    onChange={(e) => setSlotForm((prev) => ({ ...prev, permalink: e.target.value }))}
+                    placeholder="https://www.instagram.com/p/C-exemplo/"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
+                  />
+                </div>
+
+                {/* Caption / Description */}
+                <div>
+                  <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
+                    Legenda do Post
+                  </label>
+                  <input
+                    type="text"
+                    value={slotForm.caption || ''}
+                    onChange={(e) => setSlotForm((prev) => ({ ...prev, caption: e.target.value }))}
+                    placeholder="Ex: Tacos artesanais preparados no fogo vivo."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
+                  />
+                </div>
+
+                {/* Save Button */}
+                <div className="mt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <button
+                    type="submit"
+                    className="py-3.5 px-6 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#001219] shadow-[4px_4px_0px_#001219] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Salvar Slot #{activeSlotNumber}</span>
+                  </button>
+
+                  {saveStatus && (
+                    <span className="font-mono text-xs text-[#0A9396] font-bold text-center sm:text-left">
+                      {saveStatus}
+                    </span>
+                  )}
+                </div>
+              </form>
+
+              {/* Preview Column */}
+              <div className="lg:col-span-5 flex flex-col justify-center">
+                <p className="font-mono text-[11px] uppercase font-bold text-[#001219] mb-2 text-left">
+                  Preview em Tempo Real no Site
+                </p>
+
+                <div className="bg-[#001219] border-4 border-[#001219] rounded-3xl overflow-hidden shadow-[6px_6px_0px_#001219] flex flex-col">
+                  <div className="relative aspect-[4/3] bg-black flex items-center justify-center overflow-hidden">
+                    {slotForm.media_url ? (
+                      slotForm.type === 'video' ? (
+                        <video
+                          src={slotForm.media_url}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <img
+                          src={slotForm.media_url}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/images/products/el-chicano-246.webp';
+                          }}
+                        />
+                      )
+                    ) : (
+                      <div className="p-6 text-center text-white/40 font-mono text-xs">
+                        Cole uma URL de mídia para ver o preview do card
+                      </div>
+                    )}
+
+                    <div className="absolute top-3 left-3">
+                      <span className="px-2.5 py-1 rounded-full bg-black/70 text-[#94D2BD] font-mono text-[9px] uppercase font-bold flex items-center gap-1.5 border border-white/10">
+                        <Instagram className="w-3 h-3 text-[#EE9B00]" />
+                        <span>Slot #{String(activeSlotNumber).padStart(2, '0')}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-[#001f2d] flex items-center justify-between text-left text-xs font-sans">
+                    <p className="text-white/80 line-clamp-1">{slotForm.caption || 'Sem legenda cadastrada'}</p>
+                    <ExternalLink className="w-3.5 h-3.5 text-white/50 shrink-0 ml-2" />
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* TAB 3: VÍDEO DE APRESENTAÇÃO DA FRANQUIA */}
+        {/* ================================================================= */}
+        {activeTab === 'video' && (
+          <div className="max-w-4xl mx-auto flex flex-col gap-6 text-left">
+            
+            {/* Header */}
+            <div className="pb-4 border-b-2 border-[#001219]/10">
+              <span className="font-mono text-[10px] text-[#CA6702] uppercase font-bold tracking-widest">
+                Controle de Mídia
+              </span>
+              <h2 className="font-display font-black text-2xl sm:text-3xl text-[#001219] uppercase">
+                Vídeo de Apresentação da Franquia
+              </h2>
+              <p className="font-sans text-xs text-[#001219]/70 mt-1">
+                Ative ou desative o vídeo e defina a URL do vídeo que será exibido aos interessados na página de conversão.
+              </p>
+            </div>
+
+            {/* Video Settings Form */}
+            <form onSubmit={handleSaveVideo} className="bg-white p-6 sm:p-8 rounded-3xl border-3 border-[#001219] shadow-[6px_6px_0px_#001219] flex flex-col gap-5">
+              
+              {/* Enable / Disable Switch */}
+              <div className="flex items-center justify-between p-4 rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
+                <div>
+                  <h4 className="font-display font-bold text-sm text-[#001219] uppercase">
+                    Exibir Vídeo na Página de Conversão
+                  </h4>
+                  <p className="font-sans text-xs text-[#001219]/60 mt-0.5">
+                    Quando desativado, a página foca 100% no título de impacto e botão direto para o especialista.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setVideoConfig((prev) => ({ ...prev, isEnabled: !prev.isEnabled }))}
+                  className={`w-14 h-8 rounded-full p-1 transition-colors border-2 border-[#001219] cursor-pointer shadow-[2px_2px_0px_#001219] ${
+                    videoConfig.isEnabled
+                      ? 'bg-[#0A9396]'
+                      : 'bg-[#001219]/20'
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                      videoConfig.isEnabled ? 'translate-x-6' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Video URL */}
+              <div>
+                <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
+                  URL do Vídeo (Link direto .mp4, CDN, Cloudflare Stream ou Embed)
+                </label>
+                <input
+                  type="text"
+                  value={videoConfig.videoUrl}
+                  onChange={(e) => setVideoConfig((prev) => ({ ...prev, videoUrl: e.target.value }))}
+                  placeholder="https://seusite.com/videos/apresentacao-franquia.mp4"
+                  className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
+                />
+              </div>
+
+              {/* Poster / Thumbnail URL */}
+              <div>
+                <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
+                  URL da Imagem de Capa / Poster (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={videoConfig.posterUrl || ''}
+                  onChange={(e) => setVideoConfig((prev) => ({ ...prev, posterUrl: e.target.value }))}
+                  placeholder="https://seusite.com/images/capa-video.webp"
+                  className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
+                />
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
+                  Título da Apresentação
+                </label>
+                <input
+                  type="text"
+                  value={videoConfig.title || ''}
+                  onChange={(e) => setVideoConfig((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Ex: Conheça o Modelo de Franquia El Chicano"
+                  className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <button
+                  type="submit"
+                  className="py-3.5 px-6 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#001219] shadow-[4px_4px_0px_#001219] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Salvar Configuração de Vídeo</span>
+                </button>
+
+                {videoSaveStatus && (
+                  <span className="font-mono text-xs text-[#0A9396] font-bold text-center sm:text-left">
+                    {videoSaveStatus}
+                  </span>
+                )}
+              </div>
+
+            </form>
+
+          </div>
+        )}
+
+      </main>
+
+    </div>
+  );
+};

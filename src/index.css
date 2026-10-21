@@ -1,0 +1,444 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-black: #001219;
+  --color-dark-teal: #005F73;
+  --color-dark-cyan: #0A9396;
+  --color-pearl-aqua: #94D2BD;
+  --color-wheat: #E9D8A6;
+  --color-golden-orange: #EE9B00;
+  --color-burnt-caramel: #CA6702;
+  --color-cinnamon: #BB3E03;
+  --color-chili-red: #AE2012;
+  --color-dark-wine: #9B2226;
+  --color-aged-paper: #FAF5E8;
+  --color-warm-white: #FFFDF9;
+
+  --font-sans: "Sora", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Lilita One", "Outfit", sans-serif;
+  --font-manifesto: "Lilita One", cursive;
+  --font-script: "Caveat", cursive;
+  --font-warmth: "Caveat", cursive, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    background-color: #001219;
+    color: #E9D8A6;
+    font-family: var(--font-sans);
+  }
+
+  body {
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #001219;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #CA6702;
+    border-radius: 5px;
+    border: 2px solid #001219;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #EE9B00;
+  }
+}
+
+/* Animations */
+@keyframes kenBurns {
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.08) translate(-1%, -1%);
+  }
+  100% {
+    transform: scale(1) translate(0, 0);
+  }
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes floatSlight {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.8;
+    filter: drop-shadow(0 0 12px rgba(238, 155, 0, 0.4));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 24px rgba(238, 155, 0, 0.8));
+  }
+}
+
+.animate-ken-burns {
+  animation: kenBurns 35s ease-in-out infinite alternate;
+}
+
+.animate-spin-slow {
+  animation: spinSlow 22s linear infinite;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
+.animate-float {
+  animation: floatSlight 4s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+/* Custom Dividers & Immersive Section Transitions */
+.divider-warm-to-cool {
+  height: 6px;
+  background: linear-gradient(90deg, #CA6702 0%, #EE9B00 25%, #0A9396 75%, #005F73 100%);
+}
+
+.divider-cool-to-warm {
+  height: 6px;
+  background: linear-gradient(90deg, #005F73 0%, #0A9396 30%, #EE9B00 70%, #CA6702 100%);
+}
+
+.section-divider-warm {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(238, 155, 0, 0.45) 50%, transparent 100%);
+  z-index: 20;
+  pointer-events: none;
+}
+
+.section-divider-cool {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(148, 210, 189, 0.45) 50%, transparent 100%);
+  z-index: 20;
+  pointer-events: none;
+}
+
+.section-divider-glow-warm {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  max-width: 85%;
+  height: 28px;
+  background: radial-gradient(ellipse at center, rgba(238, 155, 0, 0.16) 0%, transparent 70%);
+  filter: blur(10px);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.section-divider-glow-cool {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  max-width: 85%;
+  height: 28px;
+  background: radial-gradient(ellipse at center, rgba(148, 210, 189, 0.16) 0%, transparent 70%);
+  filter: blur(10px);
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Neobrutalist Shadow Helpers */
+.shadow-chicano-sm {
+  box-shadow: 3px 3px 0px 0px #001219;
+}
+
+.shadow-chicano {
+  box-shadow: 4px 4px 0px 0px #001219;
+}
+
+.shadow-chicano-md {
+  box-shadow: 6px 6px 0px 0px #001219;
+}
+
+.shadow-chicano-lg {
+  box-shadow: 12px 12px 0px 0px #001219;
+}
+
+.shadow-chicano-xl {
+  box-shadow: 16px 16px 0px 0px #001219;
+}
+
+.shadow-chicano-white {
+  box-shadow: 4px 4px 0px 0px rgba(255, 255, 255, 0.2);
+}
+
+/* ==========================================================================
+   Hero Section Cinematic & Interactive Animations
+   ========================================================================== */
+@keyframes fireTextGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes flameFlicker {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 6px rgba(238, 155, 0, 0.6));
+  }
+  25% {
+    transform: scale(1.14) rotate(-3deg);
+    filter: drop-shadow(0 0 14px rgba(202, 103, 2, 0.95));
+  }
+  50% {
+    transform: scale(0.95) rotate(2deg);
+    filter: drop-shadow(0 0 8px rgba(238, 155, 0, 0.7));
+  }
+  75% {
+    transform: scale(1.08) rotate(-1deg);
+    filter: drop-shadow(0 0 16px rgba(187, 62, 3, 0.95));
+  }
+}
+
+@keyframes heroStampPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-18deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12) rotate(-1deg);
+  }
+  100% {
+    transform: scale(1) rotate(-3deg);
+  }
+}
+
+@keyframes heroFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ctaShimmer {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  25%, 100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
+
+@keyframes badgeFireGlow {
+  0%, 100% {
+    box-shadow: 3px 3px 0px 0px #001219, 0 0 0px rgba(238, 155, 0, 0);
+  }
+  50% {
+    box-shadow: 3px 3px 0px 0px #001219, 0 0 16px rgba(238, 155, 0, 0.65);
+  }
+}
+
+@keyframes emberFloatSoft {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-9px) rotate(4deg);
+  }
+}
+
+.animate-fire-text {
+  background: linear-gradient(90deg, #CA6702, #EE9B00, #BB3E03, #EE9B00, #CA6702);
+  background-size: 250% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: fireTextGradient 4.5s ease-in-out infinite;
+}
+
+.animate-flame-flicker {
+  animation: flameFlicker 2s ease-in-out infinite;
+}
+
+.animate-hero-stamp {
+  animation: heroStampPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.animate-hero-fade-1 {
+  animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.animate-hero-fade-2 {
+  animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+}
+
+.animate-hero-fade-3 {
+  animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+}
+
+.animate-hero-fade-4 {
+  animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both;
+}
+
+.animate-badge-glow {
+  animation: badgeFireGlow 2.5s ease-in-out infinite;
+}
+
+.animate-cta-shimmer {
+  animation: ctaShimmer 4s ease-in-out infinite;
+}
+
+.animate-ember-float {
+  animation: emberFloatSoft 5s ease-in-out infinite;
+}
+
+/* Global Cinematic Micro-Animations */
+@keyframes ambientBreathingGlow {
+  0%, 100% {
+    opacity: 0.15;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.28;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes borderGlowPulse {
+  0%, 100% {
+    border-color: rgba(238, 155, 0, 0.4);
+    box-shadow: 0 0 10px rgba(238, 155, 0, 0.15);
+  }
+  50% {
+    border-color: rgba(238, 155, 0, 0.85);
+    box-shadow: 0 0 22px rgba(238, 155, 0, 0.35);
+  }
+}
+
+@keyframes gentleCardFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-ambient-glow {
+  animation: ambientBreathingGlow 8s ease-in-out infinite;
+}
+
+.animate-border-glow {
+  animation: borderGlowPulse 3.5s ease-in-out infinite;
+}
+
+.animate-gentle-float {
+  animation: gentleCardFloat 6s ease-in-out infinite;
+}
+
+/* Cinematic card & image hover smooth transitions */
+.cinematic-card {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cinematic-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 14px 14px 0px 0px #001219;
+}
+
+.cinematic-img {
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), filter 0.5s ease;
+}
+
+.cinematic-card:hover .cinematic-img {
+  transform: scale(1.07);
+  filter: contrast(1.03) brightness(1.02);
+}
+
+/* Hide scrollbar across all browsers */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Video Scrubber Thumb */
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #EE9B00;
+  border: 2px solid #001219;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(238, 155, 0, 0.8);
+  transition: transform 0.15s ease;
+}
+
+input[type="range"]:hover::-webkit-slider-thumb {
+  transform: scale(1.25);
+  background: #CA6702;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #EE9B00;
+  border: 2px solid #001219;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(238, 155, 0, 0.8);
+}
+
+
