@@ -245,39 +245,76 @@ export interface D1GalleryPost {
   updated_at?: string;
 }
 
+import { getMediaFromDB } from '../utils/mediaStorage';
+
 const LOCAL_STORAGE_GALLERY_KEY = 'elchicano_d1_gallery_store';
 
 export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
+  let posts: D1GalleryPost[] = [];
+
   try {
     const res = await fetch('/api/gallery');
     if (res.ok) {
       const payload = await res.json();
       if (payload?.success && Array.isArray(payload.posts)) {
-        localStorage.setItem(LOCAL_STORAGE_GALLERY_KEY, JSON.stringify(payload.posts));
-        return payload.posts;
+        posts = payload.posts;
+        try {
+          localStorage.setItem(LOCAL_STORAGE_GALLERY_KEY, JSON.stringify(payload.posts));
+        } catch {
+          // Ignore localStorage quota if large payload
+        }
       }
     }
   } catch {
     // Read from localStorage
   }
 
-  try {
-    const local = localStorage.getItem(LOCAL_STORAGE_GALLERY_KEY);
-    if (local) return JSON.parse(local);
-  } catch {}
+  if (posts.length === 0) {
+    try {
+      const local = localStorage.getItem(LOCAL_STORAGE_GALLERY_KEY);
+      if (local) posts = JSON.parse(local);
+    } catch {}
+  }
 
-  return [];
+  // Hydrate with local IndexedDB files if available
+  const hydrated = await Promise.all(
+    posts.map(async (p) => {
+      const localMedia = await getMediaFromDB(`slot_${p.slot_number}`);
+      if (localMedia) {
+        return {
+          ...p,
+          media_url: localMedia,
+          thumbnail_url: p.thumbnail_url || localMedia,
+        };
+      }
+      return p;
+    })
+  );
+
+  return hydrated;
 }
 
 export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
-  // Update localStorage
+  // Update localStorage safely
   try {
     const existing: D1GalleryPost[] = JSON.parse(localStorage.getItem(LOCAL_STORAGE_GALLERY_KEY) || '[]');
     const filtered = existing.filter((p) => p.slot_number !== post.slot_number);
-    filtered.push({ ...post, updated_at: new Date().toISOString() });
+    
+    // If media_url is a giant blob or dataUrl, avoid blowing localStorage limit
+    const postToStore = {
+      ...post,
+      media_url: post.media_url?.startsWith('blob:') || (post.media_url?.length || 0) > 2000000 
+        ? '' // IndexedDB holds the actual media
+        : post.media_url,
+      updated_at: new Date().toISOString(),
+    };
+
+    filtered.push(postToStore);
     filtered.sort((a, b) => a.slot_number - b.slot_number);
     localStorage.setItem(LOCAL_STORAGE_GALLERY_KEY, JSON.stringify(filtered));
-  } catch {}
+  } catch (err) {
+    console.warn('LocalStorage save warning:', err);
+  }
 
   // Update D1
   try {
@@ -287,12 +324,16 @@ export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const res = await fetch('/api/gallery', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(post),
-    });
-    return res.ok;
+    // Only send to D1 if URL is reasonable size or server is online
+    if ((post.media_url?.length || 0) < 500000) {
+      const res = await fetch('/api/gallery', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(post),
+      });
+      return res.ok;
+    }
+    return true;
   } catch {
     return true;
   }
@@ -319,22 +360,48 @@ export async function getFranchiseVideoConfig(): Promise<FranchiseVideoConfig> {
     title: 'Apresentação do Modelo El Chicano',
   };
 
+  let config = DEFAULT_CONFIG;
+
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_VIDEO_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      config = JSON.parse(raw);
     }
   } catch {}
 
-  return DEFAULT_CONFIG;
+  // Hydrate video & poster from IndexedDB if available locally
+  try {
+    const localVideo = await getMediaFromDB('franchise_video');
+    const localPoster = await getMediaFromDB('franchise_video_poster');
+
+    if (localVideo) {
+      config = { ...config, videoUrl: localVideo };
+    }
+    if (localPoster) {
+      config = { ...config, posterUrl: localPoster };
+    }
+  } catch {}
+
+  return config;
 }
 
 export async function saveFranchiseVideoConfig(config: FranchiseVideoConfig): Promise<boolean> {
   try {
-    localStorage.setItem(LOCAL_STORAGE_VIDEO_KEY, JSON.stringify(config));
+    // If videoUrl is a blob or large dataUrl, don't break localStorage
+    const configToStore = {
+      ...config,
+      videoUrl: config.videoUrl?.startsWith('blob:') || (config.videoUrl?.length || 0) > 2000000
+        ? '' // IndexedDB holds the media
+        : config.videoUrl,
+      posterUrl: config.posterUrl?.startsWith('blob:') || (config.posterUrl?.length || 0) > 2000000
+        ? ''
+        : config.posterUrl,
+    };
+    localStorage.setItem(LOCAL_STORAGE_VIDEO_KEY, JSON.stringify(configToStore));
     return true;
   } catch {
     return false;
   }
 }
+
 

@@ -29,8 +29,18 @@ import {
   KeyRound,
   CheckCircle2,
   AlertCircle,
-  Lock
+  Lock,
+  Upload,
+  Smartphone,
+  Laptop,
+  Trash2,
+  Sparkles
 } from 'lucide-react';
+import { 
+  saveMediaToDB, 
+  compressImage, 
+  extractVideoThumbnail 
+} from '../utils/mediaStorage';
 import { InstagramIcon as Instagram, WhatsAppIcon } from './Icons';
 import { Logo } from './Logo';
 import { AdminLogin } from './AdminLogin';
@@ -82,6 +92,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     title: 'Apresentação do Modelo El Chicano',
   });
   const [videoSaveStatus, setVideoSaveStatus] = useState<string>('');
+
+  // Media File Upload States (Mobile & Desktop)
+  const [isUploadingSlot, setIsUploadingSlot] = useState(false);
+  const [slotFileNote, setSlotFileNote] = useState<string>('');
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [videoFileNote, setVideoFileNote] = useState<string>('');
+  const [isUploadingPoster, setIsUploadingPoster] = useState(false);
+  const [posterFileNote, setPosterFileNote] = useState<string>('');
 
   // Security & Password Change State
   const [pwdCurrent, setPwdCurrent] = useState('');
@@ -205,6 +223,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
 
   const handleSelectSlot = (slotNum: number) => {
     setActiveSlotNumber(slotNum);
+    setSlotFileNote('');
     const existing = galleryPosts.find((p) => p.slot_number === slotNum);
     if (existing) {
       setSlotForm(existing);
@@ -220,6 +239,117 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       });
     }
     setSaveStatus('');
+  };
+
+  const handleFileUploadSlot = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingSlot(true);
+    setSlotFileNote('Processando mídia...');
+
+    try {
+      const isVideo = file.type.startsWith('video') || Boolean(file.name.match(/\.(mp4|mov|webm|m4v)$/i));
+
+      if (isVideo) {
+        setSlotFileNote('Extraindo miniatura e processando vídeo...');
+        const thumbDataUrl = await extractVideoThumbnail(file);
+        const { url, sizeMb } = await saveMediaToDB(
+          `slot_${activeSlotNumber}`,
+          file,
+          file.name
+        );
+
+        setSlotForm((prev) => ({
+          ...prev,
+          type: 'video',
+          media_url: url,
+          thumbnail_url: thumbDataUrl || url,
+        }));
+        setSlotFileNote(`Vídeo importado: ${file.name} (${sizeMb} MB)`);
+      } else {
+        setSlotFileNote('Otimizando imagem para alta performance...');
+        const { blob, dataUrl, sizeMb } = await compressImage(file, 1600, 1600, 0.85);
+        await saveMediaToDB(
+          `slot_${activeSlotNumber}`,
+          blob,
+          file.name,
+          dataUrl
+        );
+
+        setSlotForm((prev) => ({
+          ...prev,
+          type: 'photo',
+          media_url: dataUrl,
+          thumbnail_url: dataUrl,
+        }));
+        setSlotFileNote(`Foto importada: ${file.name} (${sizeMb} MB)`);
+      }
+    } catch (err: any) {
+      console.error('File upload error:', err);
+      setSlotFileNote(`Erro ao importar: ${err?.message || 'Tente novamente'}`);
+    } finally {
+      setIsUploadingSlot(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleFileUploadFranchiseVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingVideo(true);
+    setVideoFileNote('Processando e salvando vídeo...');
+
+    try {
+      const thumbDataUrl = await extractVideoThumbnail(file);
+      const { url, sizeMb } = await saveMediaToDB('franchise_video', file, file.name);
+
+      if (thumbDataUrl) {
+        await saveMediaToDB('franchise_video_poster', file, 'poster_auto.webp', thumbDataUrl);
+      }
+
+      setVideoConfig((prev) => ({
+        ...prev,
+        isEnabled: true,
+        videoUrl: url,
+        posterUrl: prev.posterUrl || thumbDataUrl,
+      }));
+
+      setVideoFileNote(`Vídeo carregado: ${file.name} (${sizeMb} MB)`);
+    } catch (err: any) {
+      console.error('Video upload error:', err);
+      setVideoFileNote('Erro ao importar vídeo. Tente outro arquivo.');
+    } finally {
+      setIsUploadingVideo(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleFileUploadFranchisePoster = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingPoster(true);
+    setPosterFileNote('Otimizando imagem de capa...');
+
+    try {
+      const { blob, dataUrl, sizeMb } = await compressImage(file, 1920, 1080, 0.85);
+      await saveMediaToDB('franchise_video_poster', blob, file.name, dataUrl);
+
+      setVideoConfig((prev) => ({
+        ...prev,
+        posterUrl: dataUrl,
+      }));
+
+      setPosterFileNote(`Capa importada: ${file.name} (${sizeMb} MB)`);
+    } catch (err: any) {
+      console.error('Poster upload error:', err);
+      setPosterFileNote('Erro ao importar capa.');
+    } finally {
+      setIsUploadingPoster(false);
+      e.target.value = '';
+    }
   };
 
   const handleSaveSlot = async (e: React.FormEvent) => {
@@ -697,17 +827,80 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   </div>
                 </div>
 
-                {/* Media URL */}
+                {/* File Upload from Computer or Mobile Phone */}
+                <div className="bg-[#FAF5E8] border-2 border-dashed border-[#001219]/35 hover:border-[#001219] rounded-2xl p-4 sm:p-5 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-mono text-[11px] uppercase font-black text-[#001219] flex items-center gap-1.5">
+                      <Upload className="w-4 h-4 text-[#CA6702]" />
+                      Importar do Celular ou Computador
+                    </span>
+                    <span className="font-mono text-[9px] uppercase px-2 py-0.5 rounded-full bg-white border border-[#001219]/20 text-[#005F73] font-bold">
+                      Galeria / Câmera / Arquivos
+                    </span>
+                  </div>
+
+                  <p className="font-sans text-xs text-[#001219]/70 mb-3">
+                    Selecione uma foto ou vídeo diretamente do seu smartphone ou computador. O arquivo é otimizado automaticamente para carregar instantaneamente.
+                  </p>
+
+                  <label className="w-full flex flex-col items-center justify-center py-4 px-4 bg-white hover:bg-[#EE9B00]/10 border-2 border-[#001219] rounded-xl shadow-[3px_3px_0px_#001219] hover:shadow-[4px_4px_0px_#001219] cursor-pointer transition-all group">
+                    <input
+                      type="file"
+                      accept={slotForm.type === 'video' ? 'video/*' : 'image/*,video/*'}
+                      onChange={handleFileUploadSlot}
+                      disabled={isUploadingSlot}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-[#FAF5E8] border border-[#001219] flex items-center justify-center text-[#CA6702] group-hover:scale-105 transition-transform">
+                        <Smartphone className="w-4 h-4 sm:hidden" />
+                        <Laptop className="w-4 h-4 hidden sm:block" />
+                      </div>
+                      <div className="text-left">
+                        <span className="font-display font-black text-xs uppercase text-[#001219] block group-hover:text-[#CA6702] transition-colors">
+                          {isUploadingSlot ? 'Processando arquivo...' : 'Escolher Foto ou Vídeo'}
+                        </span>
+                        <span className="font-mono text-[10px] text-[#001219]/50 block">
+                          Toque para abrir a galeria ou câmera
+                        </span>
+                      </div>
+                    </div>
+                  </label>
+
+                  {slotFileNote && (
+                    <div className="mt-2.5 p-2.5 rounded-xl bg-white border border-[#001219]/20 text-left flex items-center justify-between gap-2">
+                      <span className="font-mono text-xs font-bold text-[#0A9396] flex items-center gap-1.5 truncate">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        {slotFileNote}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSlotForm((prev) => ({ ...prev, media_url: '', thumbnail_url: '' }));
+                          setSlotFileNote('');
+                        }}
+                        className="text-[#AE2012] hover:text-black p-1 transition-colors"
+                        title="Remover mídia"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Media URL (Optional / Direct Link / CDN) */}
                 <div>
                   <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
-                    URL da Imagem ou Vídeo (Link Direto / CDN / Storage) *
+                    Ou cole uma URL Externa (Opcional se já importou o arquivo acima)
                   </label>
                   <input
-                    type="url"
-                    required
-                    value={slotForm.media_url}
-                    onChange={(e) => setSlotForm((prev) => ({ ...prev, media_url: e.target.value }))}
-                    placeholder="https://sua-cdn.com/foto.jpg ou /images/..."
+                    type="text"
+                    value={slotForm.media_url.startsWith('data:') || slotForm.media_url.startsWith('blob:') ? '' : slotForm.media_url}
+                    onChange={(e) => {
+                      setSlotForm((prev) => ({ ...prev, media_url: e.target.value }));
+                      setSlotFileNote('');
+                    }}
+                    placeholder={slotForm.media_url ? 'Arquivo já importado pelo dispositivo (ou cole nova URL)' : 'https://sua-cdn.com/foto.jpg ou /images/...'}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
                   />
                 </div>
@@ -862,30 +1055,151 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 </button>
               </div>
 
-              {/* Video URL */}
+              {/* Video File Import from Computer or Mobile */}
+              <div className="bg-[#FAF5E8] border-2 border-dashed border-[#001219]/35 hover:border-[#001219] rounded-2xl p-5 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-mono text-[11px] uppercase font-black text-[#001219] flex items-center gap-1.5">
+                    <Upload className="w-4 h-4 text-[#CA6702]" />
+                    Importar Vídeo do Computador ou Celular
+                  </span>
+                  <span className="font-mono text-[9px] uppercase px-2 py-0.5 rounded-full bg-white border border-[#001219]/20 text-[#005F73] font-bold">
+                    Vídeo Nativo
+                  </span>
+                </div>
+
+                <p className="font-sans text-xs text-[#001219]/70 mb-3">
+                  Selecione o arquivo de vídeo (.mp4, .mov, .webm) do seu celular ou computador. O sistema extrai a capa do primeiro frame automaticamente!
+                </p>
+
+                <label className="w-full flex flex-col items-center justify-center py-4 px-4 bg-white hover:bg-[#EE9B00]/10 border-2 border-[#001219] rounded-xl shadow-[3px_3px_0px_#001219] hover:shadow-[4px_4px_0px_#001219] cursor-pointer transition-all group">
+                  <input
+                    type="file"
+                    accept="video/*"
+                    onChange={handleFileUploadFranchiseVideo}
+                    disabled={isUploadingVideo}
+                    className="hidden"
+                  />
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-[#FAF5E8] border border-[#001219] flex items-center justify-center text-[#CA6702] group-hover:scale-105 transition-transform">
+                      <Smartphone className="w-4 h-4 sm:hidden" />
+                      <Laptop className="w-4 h-4 hidden sm:block" />
+                    </div>
+                    <div className="text-left">
+                      <span className="font-display font-black text-xs uppercase text-[#001219] block group-hover:text-[#CA6702] transition-colors">
+                        {isUploadingVideo ? 'Processando e gravando vídeo...' : 'Selecionar Arquivo de Vídeo'}
+                      </span>
+                      <span className="font-mono text-[10px] text-[#001219]/50 block">
+                        Toque para abrir seus vídeos (MP4, MOV, WebM)
+                      </span>
+                    </div>
+                  </div>
+                </label>
+
+                {videoFileNote && (
+                  <div className="mt-2.5 p-2.5 rounded-xl bg-white border border-[#001219]/20 text-left flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-bold text-[#0A9396] flex items-center gap-1.5 truncate">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      {videoFileNote}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVideoConfig((prev) => ({ ...prev, videoUrl: '' }));
+                        setVideoFileNote('');
+                      }}
+                      className="text-[#AE2012] hover:text-black p-1 transition-colors"
+                      title="Remover vídeo"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Video URL (Optional fallback) */}
               <div>
                 <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
-                  URL do Vídeo (Link direto .mp4, CDN, Cloudflare Stream ou Embed)
+                  Ou URL Externa do Vídeo (Link direto .mp4, CDN, YouTube, Vimeo)
                 </label>
                 <input
                   type="text"
-                  value={videoConfig.videoUrl}
-                  onChange={(e) => setVideoConfig((prev) => ({ ...prev, videoUrl: e.target.value }))}
-                  placeholder="https://sua-cdn.com/videos/apresentacao-franquia.mp4"
+                  value={videoConfig.videoUrl.startsWith('data:') || videoConfig.videoUrl.startsWith('blob:') ? '' : videoConfig.videoUrl}
+                  onChange={(e) => {
+                    setVideoConfig((prev) => ({ ...prev, videoUrl: e.target.value }));
+                    setVideoFileNote('');
+                  }}
+                  placeholder={videoConfig.videoUrl ? 'Vídeo já importado pelo dispositivo (ou cole nova URL)' : 'https://sua-cdn.com/videos/apresentacao-franquia.mp4'}
                   className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
                 />
               </div>
 
-              {/* Poster / Thumbnail URL */}
+              {/* Poster / Capa File Import */}
+              <div className="bg-[#FAF5E8] border-2 border-dashed border-[#001219]/35 hover:border-[#001219] rounded-2xl p-5 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-mono text-[11px] uppercase font-black text-[#001219] flex items-center gap-1.5">
+                    <Upload className="w-4 h-4 text-[#005F73]" />
+                    Importar Foto de Capa (Poster) do Celular ou Computador
+                  </span>
+                </div>
+
+                <p className="font-sans text-xs text-[#001219]/70 mb-3">
+                  (Opcional) Escolha uma foto de capa personalizada para ser exibida antes do usuário dar play.
+                </p>
+
+                <label className="w-full flex flex-col items-center justify-center py-3.5 px-4 bg-white hover:bg-[#005F73]/10 border-2 border-[#001219] rounded-xl shadow-[3px_3px_0px_#001219] hover:shadow-[4px_4px_0px_#001219] cursor-pointer transition-all group">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUploadFranchisePoster}
+                    disabled={isUploadingPoster}
+                    className="hidden"
+                  />
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#FAF5E8] border border-[#001219] flex items-center justify-center text-[#005F73]">
+                      <ImageIcon className="w-4 h-4" />
+                    </div>
+                    <div className="text-left">
+                      <span className="font-display font-black text-xs uppercase text-[#001219] block">
+                        {isUploadingPoster ? 'Comprimindo capa...' : 'Escolher Foto de Capa'}
+                      </span>
+                    </div>
+                  </div>
+                </label>
+
+                {posterFileNote && (
+                  <div className="mt-2.5 p-2 rounded-xl bg-white border border-[#001219]/20 text-left flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-bold text-[#0A9396] flex items-center gap-1.5 truncate">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      {posterFileNote}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVideoConfig((prev) => ({ ...prev, posterUrl: '' }));
+                        setPosterFileNote('');
+                      }}
+                      className="text-[#AE2012] hover:text-black p-1 transition-colors"
+                      title="Remover capa"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Poster / Thumbnail URL (Optional fallback) */}
               <div>
                 <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
-                  URL da Imagem de Capa / Poster (Opcional)
+                  Ou URL Externa da Imagem de Capa (Opcional)
                 </label>
                 <input
                   type="text"
-                  value={videoConfig.posterUrl || ''}
-                  onChange={(e) => setVideoConfig((prev) => ({ ...prev, posterUrl: e.target.value }))}
-                  placeholder="https://sua-cdn.com/images/capa-video.webp"
+                  value={videoConfig.posterUrl?.startsWith('data:') || videoConfig.posterUrl?.startsWith('blob:') ? '' : videoConfig.posterUrl}
+                  onChange={(e) => {
+                    setVideoConfig((prev) => ({ ...prev, posterUrl: e.target.value }));
+                    setPosterFileNote('');
+                  }}
+                  placeholder={videoConfig.posterUrl ? 'Capa já importada pelo dispositivo (ou cole nova URL)' : 'https://sua-cdn.com/images/capa-video.webp'}
                   className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
                 />
               </div>
@@ -903,6 +1217,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
                 />
               </div>
+
+              {/* Live Video Preview Box */}
+              {videoConfig.videoUrl && (
+                <div className="bg-[#001219] border-3 border-[#001219] rounded-2xl p-4 shadow-[4px_4px_0px_#001219]">
+                  <span className="font-mono text-[10px] uppercase font-bold text-[#94D2BD] mb-2 block">
+                    Preview do Vídeo no Site:
+                  </span>
+                  <div className="relative aspect-video rounded-xl overflow-hidden bg-black">
+                    <video
+                      src={videoConfig.videoUrl}
+                      poster={videoConfig.posterUrl}
+                      controls
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Submit Button */}
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
