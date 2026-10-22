@@ -826,38 +826,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   </span>
                 </div>
 
-                {/* Media Type Select */}
-                <div>
-                  <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
-                    Tipo de Mídia
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSlotForm((prev) => ({ ...prev, type: 'photo' }))}
-                      className={`flex-1 py-2 px-3 rounded-xl font-mono text-xs font-bold uppercase border-2 flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                        slotForm.type === 'photo'
-                          ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[2px_2px_0px_#001219]'
-                          : 'bg-[#FAF5E8] text-[#001219]/60 border-[#001219]/20 hover:border-[#001219]'
-                      }`}
-                    >
-                      <ImageIcon className="w-3.5 h-3.5" />
-                      <span>Foto</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSlotForm((prev) => ({ ...prev, type: 'video' }))}
-                      className={`flex-1 py-2 px-3 rounded-xl font-mono text-xs font-bold uppercase border-2 flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                        slotForm.type === 'video'
-                          ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[2px_2px_0px_#001219]'
-                          : 'bg-[#FAF5E8] text-[#001219]/60 border-[#001219]/20 hover:border-[#001219]'
-                      }`}
-                    >
-                      <VideoIcon className="w-3.5 h-3.5" />
-                      <span>Vídeo</span>
-                    </button>
-                  </div>
-                </div>
 
                 {/* File Upload from Computer or Mobile Phone */}
                 <div className="bg-[#FAF5E8] border-2 border-dashed border-[#001219]/35 hover:border-[#001219] rounded-2xl p-4 sm:p-5 transition-colors">
@@ -878,7 +846,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   <label className="w-full flex flex-col items-center justify-center py-4 px-4 bg-white hover:bg-[#EE9B00]/10 border-2 border-[#001219] rounded-xl shadow-[3px_3px_0px_#001219] hover:shadow-[4px_4px_0px_#001219] cursor-pointer transition-all group">
                     <input
                       type="file"
-                      accept={slotForm.type === 'video' ? 'video/*' : 'image/*,video/*'}
+                      accept="image/*,video/*"
                       onChange={handleFileUploadSlot}
                       disabled={isUploadingSlot}
                       className="hidden"
@@ -929,7 +897,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                     type="text"
                     value={slotForm.media_url.startsWith('data:') || slotForm.media_url.startsWith('blob:') ? '' : slotForm.media_url}
                     onChange={(e) => {
-                      setSlotForm((prev) => ({ ...prev, media_url: e.target.value }));
+                      const val = e.target.value;
+                      const isVideo = Boolean(val.match(/\.(mp4|mov|webm|m4v)(\?.*)?$/i));
+                      setSlotForm((prev) => ({ 
+                        ...prev, 
+                        media_url: val,
+                        type: isVideo ? 'video' : 'photo'
+                      }));
                       setSlotFileNote('');
                     }}
                     placeholder={slotForm.media_url ? 'Arquivo já importado pelo dispositivo (ou cole nova URL)' : 'https://sua-cdn.com/foto.jpg ou /images/...'}
