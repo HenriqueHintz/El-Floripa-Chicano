@@ -1,6 +1,12 @@
 import { Product, MenuCategory } from '../types';
 import { ALL_MENU_PRODUCTS, FULL_MENU_CATEGORIES } from '../data/menu';
 import { SITE_INFO } from '../data/constants';
+import { 
+  saveAppJsonToDB, 
+  getAppJsonFromDB, 
+  deleteAppJsonFromDB, 
+  purgeLegacyLocalStorageBloat 
+} from '../utils/mediaStorage';
 
 const CACHE_KEY_MENU = 'elchicano_d1_menu_cache';
 const CACHE_KEY_SETTINGS = 'elchicano_d1_settings_cache';
@@ -609,6 +615,7 @@ export async function clearFranchiseVideoConfig(): Promise<boolean> {
 export const CARDAPIO_WEB_URL = 'https://app.cardapioweb.com/elchicano_pocketfloripa';
 export const CARDAPIO_WEB_COMPANY_ID = '24759';
 const LOCAL_STORAGE_LIVE_MENU_KEY = 'elchicano_live_menu_store';
+const IDB_LIVE_MENU_KEY = 'live_menu_catalog';
 
 export interface LiveMenuData {
   categories: MenuCategory[];
@@ -617,30 +624,67 @@ export interface LiveMenuData {
   totalProducts: number;
 }
 
+let inMemoryLiveMenu: LiveMenuData | null = null;
+
+// Background hydration from IndexedDB on initial script evaluation
+if (typeof window !== 'undefined') {
+  // Purge any legacy base64 bloat automatically
+  purgeLegacyLocalStorageBloat();
+
+  getAppJsonFromDB<LiveMenuData>(IDB_LIVE_MENU_KEY)
+    .then((stored) => {
+      if (stored && Array.isArray(stored.products) && stored.products.length > 0) {
+        inMemoryLiveMenu = stored;
+        broadcastRealtime('MENU_UPDATED', stored);
+      }
+    })
+    .catch(() => {});
+}
+
 export function getLiveMenuData(): LiveMenuData {
+  // 1. Return in-memory cache if available (instant 0ms)
+  if (inMemoryLiveMenu && Array.isArray(inMemoryLiveMenu.products) && inMemoryLiveMenu.products.length > 0) {
+    return inMemoryLiveMenu;
+  }
+
+  // 2. Try localStorage safely
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_LIVE_MENU_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed?.categories) && Array.isArray(parsed?.products) && parsed.products.length > 0) {
-        return {
+        inMemoryLiveMenu = {
           categories: parsed.categories,
           products: parsed.products,
           lastSyncAt: parsed.lastSyncAt || null,
           totalProducts: parsed.products.length,
         };
+        return inMemoryLiveMenu;
       }
     }
   } catch (err) {
     console.warn('Error reading live menu from localStorage:', err);
   }
 
+  // 3. Fallback to static bundled default
   return {
     categories: FULL_MENU_CATEGORIES,
     products: ALL_MENU_PRODUCTS,
     lastSyncAt: null,
     totalProducts: ALL_MENU_PRODUCTS.length,
   };
+}
+
+export async function getLiveMenuDataAsync(): Promise<LiveMenuData> {
+  if (inMemoryLiveMenu && Array.isArray(inMemoryLiveMenu.products) && inMemoryLiveMenu.products.length > 0) {
+    return inMemoryLiveMenu;
+  }
+  const fromDB = await getAppJsonFromDB<LiveMenuData>(IDB_LIVE_MENU_KEY);
+  if (fromDB && Array.isArray(fromDB.products) && fromDB.products.length > 0) {
+    inMemoryLiveMenu = fromDB;
+    return fromDB;
+  }
+  return getLiveMenuData();
 }
 
 export async function syncMenuFromCardapioWeb(): Promise<{
@@ -724,15 +768,32 @@ export async function syncMenuFromCardapioWeb(): Promise<{
       totalProducts: mappedProducts.length,
     };
 
-    localStorage.setItem(LOCAL_STORAGE_LIVE_MENU_KEY, JSON.stringify(payloadToStore));
+    // 1. Immediate in-memory cache update (0ms latency for active session)
+    inMemoryLiveMenu = payloadToStore;
 
+    // 2. Primary Persistence: Save into IndexedDB (Unlimited quota - will never fail with quota exceeded)
+    await saveAppJsonToDB(IDB_LIVE_MENU_KEY, payloadToStore);
+
+    // 3. Secondary Persistence: Try localStorage with quota error suppression and automatic bloat purge
     try {
-      localStorage.setItem('elchicano_d1_menu_cache', JSON.stringify({
-        data: { products: mappedProducts },
-        timestamp: Date.now(),
-      }));
+      localStorage.setItem(LOCAL_STORAGE_LIVE_MENU_KEY, JSON.stringify(payloadToStore));
+    } catch (quotaErr) {
+      console.warn('LocalStorage quota limit reached. Purging legacy bloat and retrying...', quotaErr);
+      try {
+        purgeLegacyLocalStorageBloat();
+        localStorage.setItem(LOCAL_STORAGE_LIVE_MENU_KEY, JSON.stringify(payloadToStore));
+      } catch (retryErr) {
+        console.warn('LocalStorage remains full. IndexedDB is safely retaining the live menu data.');
+        // Do NOT throw: data is safely stored in IndexedDB and in-memory!
+      }
+    }
+
+    // 4. Clean up legacy D1 cache if present
+    try {
+      localStorage.removeItem('elchicano_d1_menu_cache');
     } catch {}
 
+    // 5. Broadcast to all open tabs and active components
     broadcastRealtime('MENU_UPDATED', payloadToStore);
 
     return {
@@ -754,7 +815,13 @@ export async function syncMenuFromCardapioWeb(): Promise<{
 }
 
 export function resetMenuToDefault(): LiveMenuData {
-  localStorage.removeItem(LOCAL_STORAGE_LIVE_MENU_KEY);
+  inMemoryLiveMenu = null;
+  try {
+    localStorage.removeItem(LOCAL_STORAGE_LIVE_MENU_KEY);
+    localStorage.removeItem('elchicano_d1_menu_cache');
+  } catch {}
+  deleteAppJsonFromDB(IDB_LIVE_MENU_KEY).catch(() => {});
+
   const defaultData: LiveMenuData = {
     categories: FULL_MENU_CATEGORIES,
     products: ALL_MENU_PRODUCTS,

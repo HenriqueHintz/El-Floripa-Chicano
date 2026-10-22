@@ -287,3 +287,113 @@ export async function deleteMediaFromDB(id: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Saves arbitrary structured JSON data into IndexedDB (no 5MB localStorage limit).
+ */
+export async function saveAppJsonToDB<T = any>(id: string, data: T): Promise<void> {
+  try {
+    const db = await openDB();
+    const record = {
+      id,
+      json: JSON.stringify(data),
+      updatedAt: Date.now(),
+    };
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.put(record);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) {
+    console.warn('saveAppJsonToDB warning:', err);
+  }
+}
+
+/**
+ * Retrieves arbitrary structured JSON data from IndexedDB.
+ */
+export async function getAppJsonFromDB<T = any>(id: string): Promise<T | null> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(id);
+
+      req.onsuccess = () => {
+        const rec = req.result as { id: string; json?: string } | undefined;
+        if (rec?.json) {
+          try {
+            resolve(JSON.parse(rec.json));
+            return;
+          } catch {}
+        }
+        resolve(null);
+      };
+
+      req.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Deletes JSON data from IndexedDB.
+ */
+export async function deleteAppJsonFromDB(id: string): Promise<boolean> {
+  return deleteMediaFromDB(id);
+}
+
+/**
+ * Purges legacy bloated base64 strings and temporary cache items from localStorage
+ * to ensure localStorage remains well under the 5MB browser quota.
+ */
+export function purgeLegacyLocalStorageBloat(): void {
+  if (typeof window === 'undefined') return;
+
+  try {
+    // 1. Sanitize gallery posts store from legacy Base64 / blob URLs
+    const galleryRaw = localStorage.getItem('elchicano_gallery_posts_store');
+    if (galleryRaw) {
+      try {
+        const posts = JSON.parse(galleryRaw);
+        if (Array.isArray(posts)) {
+          const sanitized = posts.map((p: any) => ({
+            ...p,
+            media_url: p.media_url && !p.media_url.startsWith('data:') && !p.media_url.startsWith('blob:') ? p.media_url : '',
+            thumbnail_url: '',
+          }));
+          localStorage.setItem('elchicano_gallery_posts_store', JSON.stringify(sanitized));
+        }
+      } catch {
+        localStorage.removeItem('elchicano_gallery_posts_store');
+      }
+    }
+
+    // 2. Sanitize franchise video store from legacy Base64
+    const videoRaw = localStorage.getItem('elchicano_franchise_video_store');
+    if (videoRaw) {
+      try {
+        const v = JSON.parse(videoRaw);
+        if (v && (v.videoUrl?.startsWith('data:') || v.posterUrl?.startsWith('data:'))) {
+          localStorage.setItem('elchicano_franchise_video_store', JSON.stringify({
+            ...v,
+            videoUrl: v.videoUrl?.startsWith('data:') ? '' : (v.videoUrl || ''),
+            posterUrl: v.posterUrl?.startsWith('data:') ? '' : (v.posterUrl || ''),
+          }));
+        }
+      } catch {
+        localStorage.removeItem('elchicano_franchise_video_store');
+      }
+    }
+
+    // 3. Remove obsolete menu caches
+    localStorage.removeItem('elchicano_d1_menu_cache');
+  } catch (err) {
+    console.warn('purgeLegacyLocalStorageBloat warning:', err);
+  }
+}
+

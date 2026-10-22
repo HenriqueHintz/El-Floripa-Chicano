@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Product } from '../types';
 import { SITE_INFO } from '../data/constants';
-import { getLiveMenuData } from '../services/d1Api';
+import { getLiveMenuData, getLiveMenuDataAsync } from '../services/d1Api';
 import { subscribeRealtime } from '../utils/realtime';
 import { AmberCanvas } from './AmberCanvas';
 import { ProductModal } from './ProductModal';
@@ -16,10 +16,17 @@ export const MenuSection: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const categoryTrackRef = useRef<HTMLDivElement>(null);
 
-  // Live Dynamic Menu from CardápioWeb (0ms hydration from localStorage + real-time subscription)
+  // Live Dynamic Menu from CardápioWeb (0ms hydration from in-memory / localStorage / IndexedDB)
   const [liveMenu, setLiveMenu] = useState(() => getLiveMenuData());
 
   useEffect(() => {
+    // Check IndexedDB store asynchronously
+    getLiveMenuDataAsync().then((stored) => {
+      if (stored && Array.isArray(stored.products) && stored.products.length > 0) {
+        setLiveMenu(stored);
+      }
+    });
+
     const unsub = subscribeRealtime('MENU_UPDATED', (payload) => {
       if (payload && Array.isArray(payload.categories) && Array.isArray(payload.products)) {
         setLiveMenu(payload);

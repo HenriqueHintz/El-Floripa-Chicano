@@ -14,6 +14,7 @@ import {
   clearFranchiseVideoConfig,
   FranchiseVideoConfig,
   getLiveMenuData,
+  getLiveMenuDataAsync,
   syncMenuFromCardapioWeb,
   resetMenuToDefault,
   LiveMenuData,
@@ -162,6 +163,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     const unsubVideo = subscribeRealtime('FRANCHISE_VIDEO_UPDATED', (cfg) => {
       if (cfg) {
         setVideoConfig(cfg);
+      }
+    });
+
+    getLiveMenuDataAsync().then((stored) => {
+      if (stored && Array.isArray(stored.products) && stored.products.length > 0) {
+        setLiveMenuData(stored);
       }
     });
 
