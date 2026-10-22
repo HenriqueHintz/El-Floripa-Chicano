@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   getFranchiseLeads, 
   updateFranchiseLeadStatus, 
+  deleteFranchiseLead,
+  clearAllFranchiseLeads,
   FranchiseLead, 
   getD1GalleryPosts, 
   saveD1GalleryPost, 
@@ -243,6 +245,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   const handleStatusChange = async (id: number | string, newStatus: string) => {
     await updateFranchiseLeadStatus(id, newStatus);
     setLeads((prev) => prev.map((l) => (String(l.id) === String(id) ? { ...l, status: newStatus as any } : l)));
+  };
+
+  const handleDeleteLead = async (id: number | string, name?: string) => {
+    const confirmDelete = window.confirm(
+      `Deseja realmente excluir o lead de ${name ? `"${name}"` : 'este interessado'}?\n\nO registro será removido permanentemente do painel e do banco de dados.`
+    );
+    if (!confirmDelete) return;
+
+    // Instant optimistic UI update
+    setLeads((prev) => prev.filter((l) => String(l.id) !== String(id)));
+    await deleteFranchiseLead(id);
+  };
+
+  const handleClearAllLeads = async () => {
+    if (leads.length === 0) return;
+    const confirmClear = window.confirm(
+      `ATENÇÃO: Deseja realmente excluir TODOS os ${leads.length} leads cadastrados?\n\nTodos os contatos e dados de expansão serão apagados permanentemente.`
+    );
+    if (!confirmClear) return;
+
+    setLeads([]);
+    await clearAllFranchiseLeads();
   };
 
   const handleSelectSlot = (slotNum: number) => {
@@ -691,6 +715,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   <Download className="w-3.5 h-3.5" />
                   <span>Exportar CSV</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleClearAllLeads}
+                  disabled={leads.length === 0}
+                  className="px-3.5 py-2 rounded-xl bg-[#FAF5E8] hover:bg-[#AE2012] text-[#AE2012] hover:text-white border-2 border-[#AE2012] hover:border-[#001219] shadow-[3px_3px_0px_#AE2012] font-mono text-xs uppercase font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40"
+                  title="Excluir todos os leads cadastrados"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Limpar Todos</span>
+                </button>
               </div>
             </div>
 
@@ -810,6 +845,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                           <WhatsAppIcon className="w-3.5 h-3.5" />
                           <span>WhatsApp</span>
                         </a>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLead(lead.id!, lead.name)}
+                          className="p-2 rounded-xl bg-[#FAF5E8] hover:bg-[#AE2012] text-[#AE2012] hover:text-white border-2 border-[#AE2012] hover:border-[#001219] shadow-[2px_2px_0px_#AE2012] hover:shadow-[3px_3px_0px_#001219] transition-all cursor-pointer"
+                          title={`Excluir lead de ${lead.name}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   );

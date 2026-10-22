@@ -227,6 +227,59 @@ export async function updateFranchiseLeadStatus(id: number | string, status: str
   return true;
 }
 
+export async function deleteFranchiseLead(id: number | string): Promise<boolean> {
+  const token = getActiveSessionToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // 1. Remove from localStorage immediately
+  try {
+    const existing: FranchiseLead[] = JSON.parse(localStorage.getItem(LOCAL_STORAGE_LEADS_KEY) || '[]');
+    const updated = existing.filter((l) => String(l.id) !== String(id));
+    localStorage.setItem(LOCAL_STORAGE_LEADS_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.warn('Error deleting lead from localStorage:', err);
+  }
+
+  // 2. Remove from D1 if backend active
+  try {
+    await fetch('/api/leads', {
+      method: 'DELETE',
+      headers,
+      body: JSON.stringify({ id }),
+    });
+  } catch {}
+
+  return true;
+}
+
+export async function clearAllFranchiseLeads(): Promise<boolean> {
+  const token = getActiveSessionToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // 1. Clear in localStorage immediately
+  try {
+    localStorage.setItem(LOCAL_STORAGE_LEADS_KEY, JSON.stringify([]));
+  } catch (err) {
+    console.warn('Error clearing leads from localStorage:', err);
+  }
+
+  // 2. Clear in D1 if backend active
+  try {
+    await fetch('/api/leads?all=true', {
+      method: 'DELETE',
+      headers,
+    });
+  } catch {}
+
+  return true;
+}
+
 // -----------------------------------------------------------------------------
 // Gallery Posts API (Cloudflare D1 + localStorage fallback)
 // -----------------------------------------------------------------------------
