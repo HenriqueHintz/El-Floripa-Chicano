@@ -38,9 +38,12 @@ export const Gallery: React.FC = () => {
     refreshGallery();
 
     // 2. Instant Real-Time Cross-Component & Cross-Tab Subscription
-    const unsub = subscribeRealtime('GALLERY_UPDATED', () => {
-      // Always re-hydrate in local document context to ensure zero-stale cache & valid URLs
-      refreshGallery();
+    const unsub = subscribeRealtime('GALLERY_UPDATED', (updatedPosts) => {
+      if (isMounted && Array.isArray(updatedPosts) && updatedPosts.length > 0) {
+        setD1Posts(updatedPosts);
+      } else {
+        refreshGallery();
+      }
     });
 
     // 3. Tab Focus, Visibility & Storage Revalidation

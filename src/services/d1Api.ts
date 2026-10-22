@@ -298,7 +298,7 @@ export interface D1GalleryPost {
   updated_at?: string;
 }
 
-import { getMediaFromDB, deleteMediaFromDB } from '../utils/mediaStorage';
+import { getMediaFromDB, saveMediaToDB, deleteMediaFromDB } from '../utils/mediaStorage';
 import { broadcastRealtime } from '../utils/realtime';
 
 const LOCAL_STORAGE_GALLERY_KEY = 'elchicano_d1_gallery_store';
@@ -324,15 +324,10 @@ export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
         const payload = await res.json();
         if (payload?.success && Array.isArray(payload.posts) && payload.posts.length > 0) {
           posts = payload.posts;
-          try {
-            localStorage.setItem(LOCAL_STORAGE_GALLERY_KEY, JSON.stringify(payload.posts));
-          } catch {}
         }
       }
     }
-  } catch {
-    // Read from localStorage
-  }
+  } catch {}
 
   if (posts.length === 0) {
     try {
@@ -361,7 +356,8 @@ export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
         return {
           ...p,
           media_url: localMedia,
-          thumbnail_url: p.thumbnail_url || localMedia,
+          thumbnail_url: localMedia,
+          is_active: p.is_active !== undefined ? p.is_active : 1,
         };
       }
       return p;
@@ -374,33 +370,57 @@ export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
 export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
   const slotNum = Number(post.slot_number);
 
-  // If media is not a local data/blob URL or is empty, remove any previous IndexedDB file to prevent stale cache
-  if (!post.media_url || (!post.media_url.startsWith('data:') && !post.media_url.startsWith('blob:'))) {
+  // 1. If media is a data: URL or blob:, make sure it is safely persisted in IndexedDB
+  if (post.media_url && post.media_url.startsWith('data:')) {
+    try {
+      const res = await fetch(post.media_url);
+      const blob = await res.blob();
+      await saveMediaToDB(`slot_${slotNum}`, blob, `slot_${slotNum}.webp`, post.media_url);
+    } catch (e) {
+      console.warn('Error saving data: URL to IndexedDB:', e);
+    }
+  } else if (!post.media_url) {
     await deleteMediaFromDB(`slot_${slotNum}`);
   }
 
-  // Update localStorage safely
+  // 2. Update localStorage strictly with metadata (NEVER store heavy Base64 data: or blob: strings in localStorage)
   try {
-    const existing: D1GalleryPost[] = JSON.parse(localStorage.getItem(LOCAL_STORAGE_GALLERY_KEY) || '[]');
-    const filtered = existing.filter((p) => Number(p.slot_number) !== slotNum);
-    
-    // Store full post in localStorage if possible, else placeholder for IndexedDB
-    const isLarge = (post.media_url?.length || 0) > 1500000;
-    const postToStore = {
+    const rawLocal = localStorage.getItem(LOCAL_STORAGE_GALLERY_KEY);
+    let existing: D1GalleryPost[] = [];
+    if (rawLocal) {
+      try {
+        existing = JSON.parse(rawLocal);
+      } catch {}
+    }
+
+    // Strip bulky Base64 from all existing records to permanently prevent QuotaExceededError
+    const filtered: D1GalleryPost[] = existing
+      .filter((p) => Number(p.slot_number) !== slotNum)
+      .map((p) => ({
+        ...p,
+        media_url: p.media_url && !p.media_url.startsWith('data:') && !p.media_url.startsWith('blob:') ? p.media_url : '',
+        thumbnail_url: '',
+      }));
+
+    const isLocalData = post.media_url && (post.media_url.startsWith('data:') || post.media_url.startsWith('blob:'));
+    const postToStore: D1GalleryPost = {
       ...post,
       slot_number: slotNum,
-      media_url: isLarge ? '' : post.media_url,
+      // External URLs are stored directly; local files live in IndexedDB
+      media_url: isLocalData ? '' : (post.media_url || ''),
+      thumbnail_url: '',
+      is_active: post.is_active !== undefined ? post.is_active : 1,
       updated_at: new Date().toISOString(),
     };
 
     filtered.push(postToStore);
-    filtered.sort((a, b) => a.slot_number - b.slot_number);
+    filtered.sort((a, b) => Number(a.slot_number) - Number(b.slot_number));
     localStorage.setItem(LOCAL_STORAGE_GALLERY_KEY, JSON.stringify(filtered));
   } catch (err) {
     console.warn('LocalStorage save warning:', err);
   }
 
-  // Re-fetch hydrated list and broadcast instantly to all tabs and components
+  // 3. Re-fetch hydrated list directly from IndexedDB and broadcast in real-time
   try {
     const allHydrated = await getD1GalleryPosts();
     broadcastRealtime('GALLERY_UPDATED', allHydrated);
@@ -408,7 +428,7 @@ export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
     console.warn('Realtime broadcast error:', e);
   }
 
-  // Optionally send to Cloudflare D1 if server is online
+  // 4. Optionally send to Cloudflare D1 if server is online
   try {
     const token = getActiveSessionToken();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -538,13 +558,13 @@ export async function saveFranchiseVideoConfig(config: FranchiseVideoConfig): Pr
       await deleteMediaFromDB('franchise_video_poster');
     }
 
-    const isLargeVideo = (config.videoUrl?.length || 0) > 1500000;
-    const isLargePoster = (config.posterUrl?.length || 0) > 1500000;
+    const isLocalVideo = config.videoUrl && (config.videoUrl.startsWith('data:') || config.videoUrl.startsWith('blob:'));
+    const isLocalPoster = config.posterUrl && (config.posterUrl.startsWith('data:') || config.posterUrl.startsWith('blob:'));
 
     const configToStore = {
       ...config,
-      videoUrl: isLargeVideo ? '' : config.videoUrl,
-      posterUrl: isLargePoster ? '' : config.posterUrl,
+      videoUrl: isLocalVideo ? '' : config.videoUrl,
+      posterUrl: isLocalPoster ? '' : config.posterUrl,
     };
     localStorage.setItem(LOCAL_STORAGE_VIDEO_KEY, JSON.stringify(configToStore));
 

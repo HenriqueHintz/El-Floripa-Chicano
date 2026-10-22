@@ -445,6 +445,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       const updatedPost: D1GalleryPost = {
         ...slotForm,
         slot_number: activeSlotNumber,
+        is_active: 1,
+        caption: slotForm.caption || `Post #${activeSlotNumber}`,
         updated_at: new Date().toISOString(),
       };
 
