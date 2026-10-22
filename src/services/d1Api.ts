@@ -245,7 +245,7 @@ export interface D1GalleryPost {
   updated_at?: string;
 }
 
-import { getMediaFromDB } from '../utils/mediaStorage';
+import { getMediaFromDB, deleteMediaFromDB } from '../utils/mediaStorage';
 import { broadcastRealtime } from '../utils/realtime';
 
 const LOCAL_STORAGE_GALLERY_KEY = 'elchicano_d1_gallery_store';
@@ -321,6 +321,11 @@ export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
 export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
   const slotNum = Number(post.slot_number);
 
+  // If media is not a local data/blob URL or is empty, remove any previous IndexedDB file to prevent stale cache
+  if (!post.media_url || (!post.media_url.startsWith('data:') && !post.media_url.startsWith('blob:'))) {
+    await deleteMediaFromDB(`slot_${slotNum}`);
+  }
+
   // Update localStorage safely
   try {
     const existing: D1GalleryPost[] = JSON.parse(localStorage.getItem(LOCAL_STORAGE_GALLERY_KEY) || '[]');
@@ -363,6 +368,60 @@ export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
         method: 'POST',
         headers,
         body: JSON.stringify(post),
+      }).catch(() => {});
+    }
+  } catch {}
+
+  return true;
+}
+
+/**
+ * Completely clears / deletes a gallery slot, wiping IndexedDB and localStorage in real-time.
+ */
+export async function clearD1GallerySlot(slotNumber: number): Promise<boolean> {
+  const slotNum = Number(slotNumber);
+
+  // 1. Delete from IndexedDB immediately
+  await deleteMediaFromDB(`slot_${slotNum}`);
+
+  // 2. Clear in localStorage immediately
+  const emptyPost: D1GalleryPost = {
+    slot_number: slotNum,
+    type: 'photo',
+    media_url: '',
+    thumbnail_url: '',
+    permalink: 'https://www.instagram.com/elchicanofloripa/',
+    caption: '',
+    is_active: 0,
+    updated_at: new Date().toISOString(),
+  };
+
+  try {
+    const existing: D1GalleryPost[] = JSON.parse(localStorage.getItem(LOCAL_STORAGE_GALLERY_KEY) || '[]');
+    const filtered = existing.filter((p) => Number(p.slot_number) !== slotNum);
+    filtered.push(emptyPost);
+    filtered.sort((a, b) => a.slot_number - b.slot_number);
+    localStorage.setItem(LOCAL_STORAGE_GALLERY_KEY, JSON.stringify(filtered));
+  } catch (err) {
+    console.warn('Error clearing slot in localStorage:', err);
+  }
+
+  // 3. Hydrate & Broadcast instantly across all components & tabs
+  try {
+    const allHydrated = await getD1GalleryPosts();
+    broadcastRealtime('GALLERY_UPDATED', allHydrated);
+  } catch (e) {
+    console.warn('Realtime broadcast error on clear slot:', e);
+  }
+
+  // 4. Optionally clear in D1
+  try {
+    const token = getActiveSessionToken();
+    if (token) {
+      fetch('/api/gallery', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ slot_number: slotNum }),
       }).catch(() => {});
     }
   } catch {}
@@ -418,6 +477,14 @@ export async function getFranchiseVideoConfig(): Promise<FranchiseVideoConfig> {
 
 export async function saveFranchiseVideoConfig(config: FranchiseVideoConfig): Promise<boolean> {
   try {
+    // If video or poster is external URL or empty, remove stale IndexedDB overrides
+    if (!config.videoUrl || (!config.videoUrl.startsWith('data:') && !config.videoUrl.startsWith('blob:'))) {
+      await deleteMediaFromDB('franchise_video');
+    }
+    if (!config.posterUrl || (!config.posterUrl.startsWith('data:') && !config.posterUrl.startsWith('blob:'))) {
+      await deleteMediaFromDB('franchise_video_poster');
+    }
+
     const isLargeVideo = (config.videoUrl?.length || 0) > 1500000;
     const isLargePoster = (config.posterUrl?.length || 0) > 1500000;
 
@@ -428,8 +495,32 @@ export async function saveFranchiseVideoConfig(config: FranchiseVideoConfig): Pr
     };
     localStorage.setItem(LOCAL_STORAGE_VIDEO_KEY, JSON.stringify(configToStore));
 
-    // Broadcast instantly to all tabs and components
-    broadcastRealtime('FRANCHISE_VIDEO_UPDATED', config);
+    // Re-hydrate fresh config to ensure valid URLs and broadcast
+    const freshConfig = await getFranchiseVideoConfig();
+    broadcastRealtime('FRANCHISE_VIDEO_UPDATED', freshConfig);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Completely deletes / clears franchise video and poster from IndexedDB and storage.
+ */
+export async function clearFranchiseVideoConfig(): Promise<boolean> {
+  try {
+    await deleteMediaFromDB('franchise_video');
+    await deleteMediaFromDB('franchise_video_poster');
+
+    const clearedConfig: FranchiseVideoConfig = {
+      isEnabled: false,
+      videoUrl: '',
+      posterUrl: '',
+      title: 'Apresentação do Modelo El Chicano',
+    };
+
+    localStorage.setItem(LOCAL_STORAGE_VIDEO_KEY, JSON.stringify(clearedConfig));
+    broadcastRealtime('FRANCHISE_VIDEO_UPDATED', clearedConfig);
     return true;
   } catch {
     return false;

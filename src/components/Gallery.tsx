@@ -24,9 +24,11 @@ export const Gallery: React.FC = () => {
   const [d1Posts, setD1Posts] = useState<D1GalleryPost[]>([]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const refreshGallery = () => {
       getD1GalleryPosts().then((posts) => {
-        if (posts && Array.isArray(posts) && posts.length > 0) {
+        if (isMounted && posts && Array.isArray(posts)) {
           setD1Posts(posts);
         }
       });
@@ -36,18 +38,31 @@ export const Gallery: React.FC = () => {
     refreshGallery();
 
     // 2. Instant Real-Time Cross-Component & Cross-Tab Subscription
-    const unsub = subscribeRealtime('GALLERY_UPDATED', (updatedPosts) => {
-      if (Array.isArray(updatedPosts)) {
-        setD1Posts(updatedPosts);
+    const unsub = subscribeRealtime('GALLERY_UPDATED', () => {
+      // Always re-hydrate in local document context to ensure zero-stale cache & valid URLs
+      refreshGallery();
+    });
+
+    // 3. Tab Focus, Visibility & Storage Revalidation
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshGallery();
+      }
+    };
+
+    window.addEventListener('focus', refreshGallery);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'elchicano_d1_gallery_store') {
+        refreshGallery();
       }
     });
 
-    // 3. Tab Focus Revalidation
-    window.addEventListener('focus', refreshGallery);
-
     return () => {
+      isMounted = false;
       unsub();
       window.removeEventListener('focus', refreshGallery);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 

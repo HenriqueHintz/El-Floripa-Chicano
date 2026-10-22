@@ -5,9 +5,11 @@ import {
   FranchiseLead, 
   getD1GalleryPosts, 
   saveD1GalleryPost, 
+  clearD1GallerySlot,
   D1GalleryPost,
   getFranchiseVideoConfig,
   saveFranchiseVideoConfig,
+  clearFranchiseVideoConfig,
   FranchiseVideoConfig
 } from '../services/d1Api';
 import { 
@@ -405,6 +407,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     }
   };
 
+  const handleClearSlot = async () => {
+    const confirmClear = window.confirm(
+      `Deseja realmente zerar e limpar o Slot #${activeSlotNumber}?\n\nA imagem/vídeo e a legenda serão excluídos e o slot voltará ao estado vazio no site imediatamente.`
+    );
+    if (!confirmClear) return;
+
+    setSaveStatus('Zerando slot...');
+    try {
+      await clearD1GallerySlot(activeSlotNumber);
+
+      const blankSlot: D1GalleryPost = {
+        slot_number: activeSlotNumber,
+        type: 'photo',
+        media_url: '',
+        thumbnail_url: '',
+        permalink: 'https://www.instagram.com/elchicanofloripa/',
+        caption: '',
+        is_active: 0,
+      };
+
+      setSlotForm(blankSlot);
+      setSlotFileNote('');
+
+      // Immediate 0ms local state update
+      setGalleryPosts((prev) => {
+        const filtered = prev.filter((p) => Number(p.slot_number) !== activeSlotNumber);
+        return [...filtered, blankSlot].sort((a, b) => Number(a.slot_number) - Number(b.slot_number));
+      });
+
+      setSaveStatus(`Slot #${activeSlotNumber} zerado com sucesso!`);
+      setTimeout(() => setSaveStatus(''), 3500);
+    } catch {
+      setSaveStatus('Erro ao zerar slot.');
+    }
+  };
+
   const handleSaveVideo = async (e: React.FormEvent) => {
     e.preventDefault();
     setVideoSaveStatus('Salvando...');
@@ -416,6 +454,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       setVideoSaveStatus('Erro ao salvar vídeo');
     }
   };
+
+  const handleClearVideo = async () => {
+    const confirmClear = window.confirm(
+      'Deseja realmente excluir o vídeo da franquia?\n\nO arquivo de vídeo e a capa serão apagados do sistema e o bloco será desativado no site em tempo real.'
+    );
+    if (!confirmClear) return;
+
+    setVideoSaveStatus('Excluindo vídeo...');
+    try {
+      await clearFranchiseVideoConfig();
+
+      setVideoConfig({
+        isEnabled: false,
+        videoUrl: '',
+        posterUrl: '',
+        title: 'Apresentação do Modelo El Chicano',
+      });
+      setVideoFileNote('');
+      setPosterFileNote('');
+
+      setVideoSaveStatus('Vídeo da franquia excluído com sucesso!');
+      setTimeout(() => setVideoSaveStatus(''), 3500);
+    } catch {
+      setVideoSaveStatus('Erro ao excluir vídeo.');
+    }
+  };
+
 
   const exportLeadsCSV = () => {
     if (leads.length === 0) return;
@@ -939,14 +1004,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   />
                 </div>
 
-                {/* Save Button */}
-                <div className="mt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {/* Actions: Save & Clear / Delete */}
+                <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <button
                     type="submit"
                     className="py-3.5 px-6 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#001219] shadow-[4px_4px_0px_#001219] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Save className="w-4 h-4" />
                     <span>Salvar Slot #{activeSlotNumber}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleClearSlot}
+                    className="py-3.5 px-6 rounded-2xl bg-[#FAF5E8] hover:bg-[#AE2012] text-[#AE2012] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#AE2012] hover:border-[#001219] shadow-[4px_4px_0px_#AE2012] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    title={`Limpar e zerar o conteúdo do Slot #${activeSlotNumber}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Zerar / Excluir Slot #{activeSlotNumber}</span>
                   </button>
 
                   {saveStatus && (
@@ -1242,14 +1317,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 </div>
               )}
 
-              {/* Submit Button */}
-              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              {/* Actions: Save & Clear / Delete */}
+              <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <button
                   type="submit"
                   className="py-3.5 px-6 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#001219] shadow-[4px_4px_0px_#001219] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   <span>Salvar Configuração de Vídeo</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleClearVideo}
+                  className="py-3.5 px-6 rounded-2xl bg-[#FAF5E8] hover:bg-[#AE2012] text-[#AE2012] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#AE2012] hover:border-[#001219] shadow-[4px_4px_0px_#AE2012] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  title="Excluir o arquivo de vídeo e capa da franquia"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Excluir / Zerar Vídeo da Franquia</span>
                 </button>
 
                 {videoSaveStatus && (

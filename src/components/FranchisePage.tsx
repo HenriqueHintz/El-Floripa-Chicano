@@ -32,9 +32,13 @@ export const FranchisePage: React.FC<FranchisePageProps> = ({ onBackToHome }) =>
   });
 
   useEffect(() => {
+    let isMounted = true;
+
     const refreshVideo = () => {
       getFranchiseVideoConfig().then((cfg) => {
-        setVideoConfig(cfg);
+        if (isMounted && cfg) {
+          setVideoConfig(cfg);
+        }
       });
     };
 
@@ -42,18 +46,31 @@ export const FranchisePage: React.FC<FranchisePageProps> = ({ onBackToHome }) =>
     refreshVideo();
 
     // 2. Real-time subscription across tabs and components
-    const unsub = subscribeRealtime('FRANCHISE_VIDEO_UPDATED', (newCfg) => {
-      if (newCfg) {
-        setVideoConfig(newCfg);
+    const unsub = subscribeRealtime('FRANCHISE_VIDEO_UPDATED', () => {
+      // Re-hydrate locally from IndexedDB & storage so Blob URLs are valid in this window
+      refreshVideo();
+    });
+
+    // 3. Tab focus, visibility & storage revalidation
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshVideo();
+      }
+    };
+
+    window.addEventListener('focus', refreshVideo);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'elchicano_d1_franchise_video') {
+        refreshVideo();
       }
     });
 
-    // 3. Tab focus revalidation
-    window.addEventListener('focus', refreshVideo);
-
     return () => {
+      isMounted = false;
       unsub();
       window.removeEventListener('focus', refreshVideo);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
