@@ -9,8 +9,15 @@
     <meta name="theme-color" content="#001219" />
     <meta name="author" content="El Chicano Mexican Food" />
 
-    <!-- Favicon & Canonical -->
-    <link rel="icon" type="image/webp" href="/images/logos/logo.webp" />
+    <!-- Favicons, Apple Touch Icon & PWA Manifest -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="manifest" href="/site.webmanifest" />
     <link rel="canonical" href="https://elchicano.com.br/" />
 
     <!-- Preload Hero Assets -->
@@ -40,10 +47,22 @@
         "@context": "https://schema.org",
         "@graph": [
           {
+            "@type": "Organization",
+            "@id": "https://elchicano.com.br/#organization",
+            "name": "El Chicano",
+            "url": "https://elchicano.com.br",
+            "logo": "https://elchicano.com.br/icon-512.png",
+            "image": "https://elchicano.com.br/icon-512.png",
+            "sameAs": [
+              "https://www.instagram.com/elchicanofloripa"
+            ]
+          },
+          {
             "@type": "Restaurant",
             "@id": "https://elchicano.com.br/#restaurant-floripa",
             "name": "El Chicano - Florianópolis",
-            "image": "https://elchicano.com.br/images/logos/logo.webp",
+            "logo": "https://elchicano.com.br/icon-512.png",
+            "image": "https://elchicano.com.br/icon-512.png",
             "url": "https://elchicano.com.br",
             "telephone": "+5548996520836",
             "priceRange": "$$",
@@ -82,7 +101,8 @@
             "@type": "Restaurant",
             "@id": "https://elchicano.com.br/#restaurant-laguna",
             "name": "El Chicano - Laguna",
-            "image": "https://elchicano.com.br/images/logos/logo.webp",
+            "logo": "https://elchicano.com.br/icon-512.png",
+            "image": "https://elchicano.com.br/icon-512.png",
             "url": "https://elchicano.com.br",
             "telephone": "+5548999787816",
             "priceRange": "$$",
