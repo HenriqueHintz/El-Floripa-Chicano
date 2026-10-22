@@ -95,7 +95,8 @@ export async function compressImage(
       canvas.toBlob(
         (blob) => {
           if (!blob) {
-            reject(new Error('Failed to create blob from canvas'));
+            const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+            resolve({ blob: file, dataUrl, sizeMb });
             return;
           }
           const sizeMb = (blob.size / (1024 * 1024)).toFixed(2);
@@ -106,9 +107,15 @@ export async function compressImage(
       );
     };
 
-    img.onerror = () => {
+    img.onerror = async () => {
       URL.revokeObjectURL(objectUrl);
-      reject(new Error('Failed to load image for compression'));
+      try {
+        const rawDataUrl = await fileToDataUrl(file);
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+        resolve({ blob: file, dataUrl: rawDataUrl, sizeMb });
+      } catch (err) {
+        reject(new Error('Failed to load image for compression and fallback failed'));
+      }
     };
 
     img.src = objectUrl;

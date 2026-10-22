@@ -293,46 +293,69 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const targetSlot = activeSlotNumber;
+
     setIsUploadingSlot(true);
     setSlotFileNote('Processando mídia...');
 
     try {
       const isVideo = file.type.startsWith('video') || Boolean(file.name.match(/\.(mp4|mov|webm|m4v)$/i));
 
+      let mediaUrl = '';
+      let thumbUrl = '';
+      let fileNote = '';
+
       if (isVideo) {
         setSlotFileNote('Extraindo miniatura e processando vídeo...');
         const thumbDataUrl = await extractVideoThumbnail(file);
         const { url, sizeMb } = await saveMediaToDB(
-          `slot_${activeSlotNumber}`,
+          `slot_${targetSlot}`,
           file,
           file.name
         );
-
-        setSlotForm((prev) => ({
-          ...prev,
-          type: 'video',
-          media_url: url,
-          thumbnail_url: thumbDataUrl || url,
-        }));
-        setSlotFileNote(`Vídeo importado: ${file.name} (${sizeMb} MB)`);
+        mediaUrl = url;
+        thumbUrl = thumbDataUrl || url;
+        fileNote = `Vídeo importado: ${file.name} (${sizeMb} MB)`;
       } else {
         setSlotFileNote('Otimizando imagem para alta performance...');
         const { blob, dataUrl, sizeMb } = await compressImage(file, 1600, 1600, 0.85);
         await saveMediaToDB(
-          `slot_${activeSlotNumber}`,
+          `slot_${targetSlot}`,
           blob,
           file.name,
           dataUrl
         );
-
-        setSlotForm((prev) => ({
-          ...prev,
-          type: 'photo',
-          media_url: dataUrl,
-          thumbnail_url: dataUrl,
-        }));
-        setSlotFileNote(`Foto importada: ${file.name} (${sizeMb} MB)`);
+        mediaUrl = dataUrl;
+        thumbUrl = dataUrl;
+        fileNote = `Foto importada: ${file.name} (${sizeMb} MB)`;
       }
+
+      const updatedPost: D1GalleryPost = {
+        ...slotForm,
+        slot_number: targetSlot,
+        type: isVideo ? 'video' : 'photo',
+        media_url: mediaUrl,
+        thumbnail_url: thumbUrl,
+        is_active: 1,
+        caption: slotForm.caption || `Post #${targetSlot}`,
+        permalink: slotForm.permalink || 'https://www.instagram.com/elchicanofloripa/',
+        updated_at: new Date().toISOString(),
+      };
+
+      setSlotForm(updatedPost);
+      setSlotFileNote(fileNote);
+
+      // 1. Instant Optimistic Update across all slots
+      setGalleryPosts((prev) => {
+        const filtered = prev.filter((p) => Number(p.slot_number) !== targetSlot);
+        return [...filtered, updatedPost].sort((a, b) => Number(a.slot_number) - Number(b.slot_number));
+      });
+
+      // 2. Direct Auto-Save to IndexedDB, LocalStorage & D1 (Broadcasting in 0ms to public site)
+      await saveD1GalleryPost(updatedPost);
+
+      setSaveStatus(`Slot #${targetSlot} salvo e ativo no site!`);
+      setTimeout(() => setSaveStatus(''), 4000);
     } catch (err: any) {
       console.error('File upload error:', err);
       setSlotFileNote(`Erro ao importar: ${err?.message || 'Tente novamente'}`);
@@ -357,14 +380,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         await saveMediaToDB('franchise_video_poster', file, 'poster_auto.webp', thumbDataUrl);
       }
 
-      setVideoConfig((prev) => ({
-        ...prev,
+      const updatedConfig = {
+        ...videoConfig,
         isEnabled: true,
         videoUrl: url,
-        posterUrl: prev.posterUrl || thumbDataUrl,
-      }));
+        posterUrl: videoConfig.posterUrl || thumbDataUrl,
+      };
 
-      setVideoFileNote(`Vídeo carregado: ${file.name} (${sizeMb} MB)`);
+      setVideoConfig(updatedConfig);
+      await saveFranchiseVideoConfig(updatedConfig);
+
+      setVideoFileNote(`Vídeo carregado e salvo: ${file.name} (${sizeMb} MB)`);
+      setVideoSaveStatus('Vídeo ativo no site!');
+      setTimeout(() => setVideoSaveStatus(''), 4000);
     } catch (err: any) {
       console.error('Video upload error:', err);
       setVideoFileNote('Erro ao importar vídeo. Tente outro arquivo.');
@@ -385,12 +413,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       const { blob, dataUrl, sizeMb } = await compressImage(file, 1920, 1080, 0.85);
       await saveMediaToDB('franchise_video_poster', blob, file.name, dataUrl);
 
-      setVideoConfig((prev) => ({
-        ...prev,
+      const updatedConfig = {
+        ...videoConfig,
         posterUrl: dataUrl,
-      }));
+      };
 
-      setPosterFileNote(`Capa importada: ${file.name} (${sizeMb} MB)`);
+      setVideoConfig(updatedConfig);
+      await saveFranchiseVideoConfig(updatedConfig);
+
+      setPosterFileNote(`Capa importada e salva: ${file.name} (${sizeMb} MB)`);
+      setVideoSaveStatus('Capa atualizada no site!');
+      setTimeout(() => setVideoSaveStatus(''), 4000);
     } catch (err: any) {
       console.error('Poster upload error:', err);
       setPosterFileNote('Erro ao importar capa.');
@@ -885,36 +918,63 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
               </div>
             </div>
 
-            {/* Slot Selector Strip (1 to 7) - Mobile Touch Friendly */}
+            {/* Slot Selector Strip (1 to 7) - Mobile Touch Friendly with Mini Visual Thumbnails */}
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
               {[1, 2, 3, 4, 5, 6, 7].map((num) => {
                 const isCurrent = activeSlotNumber === num;
-                const slotData = galleryPosts.find((p) => p.slot_number === num);
-                const hasMedia = Boolean(slotData?.media_url);
+                const slotData = galleryPosts.find((p) => Number(p.slot_number) === num);
+                const hasMedia = Boolean(slotData?.media_url && slotData.is_active !== 0);
 
                 return (
                   <button
                     key={num}
                     type="button"
                     onClick={() => handleSelectSlot(num)}
-                    className={`p-3 rounded-2xl border-2 text-left flex flex-col justify-between transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-2xl border-2 text-left flex flex-col justify-between transition-all cursor-pointer ${
                       isCurrent
-                        ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[4px_4px_0px_#001219] scale-102 font-bold'
+                        ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[4px_4px_0px_#001219] scale-102 font-bold ring-2 ring-[#001219]'
                         : hasMedia
                         ? 'bg-white text-[#001219] border-2 border-[#001219] shadow-[2px_2px_0px_#001219] hover:border-[#EE9B00]'
                         : 'bg-[#FAF5E8] text-[#001219]/60 border-2 border-dashed border-[#001219]/30 hover:border-[#001219]'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-1.5">
                       <span className="font-mono text-[10px] uppercase font-black">
                         Slot #{String(num).padStart(2, '0')}
                       </span>
-                      {hasMedia && (
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#0A9396] border border-[#001219]" title="Mídia ativa" />
+                      {hasMedia ? (
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#0A9396] border border-[#001219]" title="Mídia ativa no site" />
+                      ) : (
+                        <span className="w-2.5 h-2.5 rounded-full bg-black/15" title="Slot vazio" />
                       )}
                     </div>
-                    <p className="font-sans text-xs font-bold mt-2 truncate">
-                      {slotData?.caption || (hasMedia ? 'Preenchido' : 'Vazio')}
+
+                    {/* Mini Visual Thumbnail Box */}
+                    <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-black/10 border border-black/10 flex items-center justify-center mb-1.5">
+                      {hasMedia && slotData?.media_url ? (
+                        slotData.type === 'video' ? (
+                          <div className="w-full h-full relative">
+                            {slotData.thumbnail_url ? (
+                              <img src={slotData.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <video src={slotData.media_url} muted className="w-full h-full object-cover" />
+                            )}
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+                              <Video className="w-3.5 h-3.5 text-white" />
+                            </div>
+                          </div>
+                        ) : (
+                          <img src={slotData.media_url} alt="" className="w-full h-full object-cover" />
+                        )
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-black/30">
+                          <ImageIcon className="w-4 h-4" />
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="font-sans text-[11px] font-bold truncate leading-tight">
+                      {hasMedia ? (slotData?.type === 'video' ? 'Vídeo' : 'Foto') : 'Vazio'}
                     </p>
                   </button>
                 );
@@ -1075,16 +1135,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                       ) : (
                         <img
                           src={slotForm.media_url}
-                          alt="Preview"
+                          alt={`Preview Slot #${activeSlotNumber}`}
                           className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/images/products/el-chicano-246.webp';
-                          }}
                         />
                       )
                     ) : (
-                      <div className="p-6 text-center text-white/40 font-mono text-xs">
-                        Importe uma foto ou vídeo para ver o preview do card
+                      <div className="p-6 text-center text-white/40 font-mono text-xs flex flex-col items-center gap-2">
+                        <ImageIcon className="w-8 h-8 text-white/20" />
+                        <span>Slot Vazio — Selecione uma foto ou vídeo acima</span>
                       </div>
                     )}
 
