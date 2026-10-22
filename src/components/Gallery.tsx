@@ -5,6 +5,7 @@ import { getD1GalleryPosts, D1GalleryPost } from '../services/d1Api';
 import { LightboxModal } from './LightboxModal';
 import { InstagramIcon } from './Icons';
 import { Play, Heart, ShoppingBag, Eye, ExternalLink } from 'lucide-react';
+import { subscribeRealtime } from '../utils/realtime';
 
 const EMPTY_INSTAGRAM_SLOTS = [
   { id: 1, label: 'Post #01' },
@@ -23,11 +24,31 @@ export const Gallery: React.FC = () => {
   const [d1Posts, setD1Posts] = useState<D1GalleryPost[]>([]);
 
   useEffect(() => {
-    getD1GalleryPosts().then((posts) => {
-      if (posts && Array.isArray(posts) && posts.length > 0) {
-        setD1Posts(posts);
+    const refreshGallery = () => {
+      getD1GalleryPosts().then((posts) => {
+        if (posts && Array.isArray(posts) && posts.length > 0) {
+          setD1Posts(posts);
+        }
+      });
+    };
+
+    // 1. Initial hydration
+    refreshGallery();
+
+    // 2. Instant Real-Time Cross-Component & Cross-Tab Subscription
+    const unsub = subscribeRealtime('GALLERY_UPDATED', (updatedPosts) => {
+      if (Array.isArray(updatedPosts)) {
+        setD1Posts(updatedPosts);
       }
     });
+
+    // 3. Tab Focus Revalidation
+    window.addEventListener('focus', refreshGallery);
+
+    return () => {
+      unsub();
+      window.removeEventListener('focus', refreshGallery);
+    };
   }, []);
 
   const toggleLike = (id: string, e?: React.MouseEvent) => {
@@ -170,7 +191,9 @@ export const Gallery: React.FC = () => {
         {/* Gallery Grid across full screen proportion (7 dynamic/structural slots + 1 community card) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {EMPTY_INSTAGRAM_SLOTS.map((slot) => {
-            const post = d1Posts.find((p) => p.slot_number === slot.id && p.media_url && p.is_active !== 0);
+            const post = d1Posts.find(
+              (p) => Number(p.slot_number) === Number(slot.id) && Boolean(p.media_url) && p.is_active !== 0
+            );
             const isLiked = likedIds.has(`slot-${slot.id}`);
 
             if (post) {

@@ -3,6 +3,7 @@ import { submitFranchiseLead, FranchiseLead, getFranchiseVideoConfig, FranchiseV
 import { ArrowLeft, Send, CheckCircle2, DollarSign, Clock, TrendingUp, Flame, X, ChevronRight, Play } from 'lucide-react';
 import { WhatsAppIcon } from './Icons';
 import { Logo } from './Logo';
+import { subscribeRealtime } from '../utils/realtime';
 
 interface FranchisePageProps {
   onBackToHome: () => void;
@@ -31,9 +32,29 @@ export const FranchisePage: React.FC<FranchisePageProps> = ({ onBackToHome }) =>
   });
 
   useEffect(() => {
-    getFranchiseVideoConfig().then((cfg) => {
-      setVideoConfig(cfg);
+    const refreshVideo = () => {
+      getFranchiseVideoConfig().then((cfg) => {
+        setVideoConfig(cfg);
+      });
+    };
+
+    // 1. Initial fetch
+    refreshVideo();
+
+    // 2. Real-time subscription across tabs and components
+    const unsub = subscribeRealtime('FRANCHISE_VIDEO_UPDATED', (newCfg) => {
+      if (newCfg) {
+        setVideoConfig(newCfg);
+      }
     });
+
+    // 3. Tab focus revalidation
+    window.addEventListener('focus', refreshVideo);
+
+    return () => {
+      unsub();
+      window.removeEventListener('focus', refreshVideo);
+    };
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

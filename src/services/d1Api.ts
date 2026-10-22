@@ -246,8 +246,19 @@ export interface D1GalleryPost {
 }
 
 import { getMediaFromDB } from '../utils/mediaStorage';
+import { broadcastRealtime } from '../utils/realtime';
 
 const LOCAL_STORAGE_GALLERY_KEY = 'elchicano_d1_gallery_store';
+
+const DEFAULT_GALLERY_SLOTS: D1GalleryPost[] = [1, 2, 3, 4, 5, 6, 7].map((num) => ({
+  slot_number: num,
+  type: 'photo',
+  media_url: '',
+  thumbnail_url: '',
+  permalink: 'https://www.instagram.com/elchicanofloripa/',
+  caption: `Post #${num}`,
+  is_active: 1,
+}));
 
 export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
   let posts: D1GalleryPost[] = [];
@@ -255,13 +266,14 @@ export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
   try {
     const res = await fetch('/api/gallery');
     if (res.ok) {
-      const payload = await res.json();
-      if (payload?.success && Array.isArray(payload.posts)) {
-        posts = payload.posts;
-        try {
-          localStorage.setItem(LOCAL_STORAGE_GALLERY_KEY, JSON.stringify(payload.posts));
-        } catch {
-          // Ignore localStorage quota if large payload
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const payload = await res.json();
+        if (payload?.success && Array.isArray(payload.posts) && payload.posts.length > 0) {
+          posts = payload.posts;
+          try {
+            localStorage.setItem(LOCAL_STORAGE_GALLERY_KEY, JSON.stringify(payload.posts));
+          } catch {}
         }
       }
     }
@@ -276,9 +288,21 @@ export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
     } catch {}
   }
 
+  // Ensure all 7 slots exist in the working array
+  const fullSlotsMap = new Map<number, D1GalleryPost>();
+  DEFAULT_GALLERY_SLOTS.forEach((slot) => fullSlotsMap.set(slot.slot_number, { ...slot }));
+  posts.forEach((p) => {
+    const num = Number(p.slot_number);
+    if (num >= 1 && num <= 7) {
+      fullSlotsMap.set(num, { ...p, slot_number: num });
+    }
+  });
+
+  const merged = Array.from(fullSlotsMap.values()).sort((a, b) => a.slot_number - b.slot_number);
+
   // Hydrate with local IndexedDB files if available
   const hydrated = await Promise.all(
-    posts.map(async (p) => {
+    merged.map(async (p) => {
       const localMedia = await getMediaFromDB(`slot_${p.slot_number}`);
       if (localMedia) {
         return {
@@ -295,17 +319,19 @@ export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
 }
 
 export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
+  const slotNum = Number(post.slot_number);
+
   // Update localStorage safely
   try {
     const existing: D1GalleryPost[] = JSON.parse(localStorage.getItem(LOCAL_STORAGE_GALLERY_KEY) || '[]');
-    const filtered = existing.filter((p) => p.slot_number !== post.slot_number);
+    const filtered = existing.filter((p) => Number(p.slot_number) !== slotNum);
     
-    // If media_url is a giant blob or dataUrl, avoid blowing localStorage limit
+    // Store full post in localStorage if possible, else placeholder for IndexedDB
+    const isLarge = (post.media_url?.length || 0) > 1500000;
     const postToStore = {
       ...post,
-      media_url: post.media_url?.startsWith('blob:') || (post.media_url?.length || 0) > 2000000 
-        ? '' // IndexedDB holds the actual media
-        : post.media_url,
+      slot_number: slotNum,
+      media_url: isLarge ? '' : post.media_url,
       updated_at: new Date().toISOString(),
     };
 
@@ -316,7 +342,15 @@ export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
     console.warn('LocalStorage save warning:', err);
   }
 
-  // Update D1
+  // Re-fetch hydrated list and broadcast instantly to all tabs and components
+  try {
+    const allHydrated = await getD1GalleryPosts();
+    broadcastRealtime('GALLERY_UPDATED', allHydrated);
+  } catch (e) {
+    console.warn('Realtime broadcast error:', e);
+  }
+
+  // Optionally send to Cloudflare D1 if server is online
   try {
     const token = getActiveSessionToken();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -324,19 +358,16 @@ export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // Only send to D1 if URL is reasonable size or server is online
     if ((post.media_url?.length || 0) < 500000) {
-      const res = await fetch('/api/gallery', {
+      fetch('/api/gallery', {
         method: 'POST',
         headers,
         body: JSON.stringify(post),
-      });
-      return res.ok;
+      }).catch(() => {});
     }
-    return true;
-  } catch {
-    return true;
-  }
+  } catch {}
+
+  return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -354,7 +385,7 @@ const LOCAL_STORAGE_VIDEO_KEY = 'elchicano_d1_franchise_video';
 
 export async function getFranchiseVideoConfig(): Promise<FranchiseVideoConfig> {
   const DEFAULT_CONFIG: FranchiseVideoConfig = {
-    isEnabled: false, // Video removed from page by default as requested
+    isEnabled: false,
     videoUrl: '',
     posterUrl: '',
     title: 'Apresentação do Modelo El Chicano',
@@ -387,21 +418,23 @@ export async function getFranchiseVideoConfig(): Promise<FranchiseVideoConfig> {
 
 export async function saveFranchiseVideoConfig(config: FranchiseVideoConfig): Promise<boolean> {
   try {
-    // If videoUrl is a blob or large dataUrl, don't break localStorage
+    const isLargeVideo = (config.videoUrl?.length || 0) > 1500000;
+    const isLargePoster = (config.posterUrl?.length || 0) > 1500000;
+
     const configToStore = {
       ...config,
-      videoUrl: config.videoUrl?.startsWith('blob:') || (config.videoUrl?.length || 0) > 2000000
-        ? '' // IndexedDB holds the media
-        : config.videoUrl,
-      posterUrl: config.posterUrl?.startsWith('blob:') || (config.posterUrl?.length || 0) > 2000000
-        ? ''
-        : config.posterUrl,
+      videoUrl: isLargeVideo ? '' : config.videoUrl,
+      posterUrl: isLargePoster ? '' : config.posterUrl,
     };
     localStorage.setItem(LOCAL_STORAGE_VIDEO_KEY, JSON.stringify(configToStore));
+
+    // Broadcast instantly to all tabs and components
+    broadcastRealtime('FRANCHISE_VIDEO_UPDATED', config);
     return true;
   } catch {
     return false;
   }
 }
+
 
 

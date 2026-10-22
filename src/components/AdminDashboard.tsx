@@ -41,6 +41,7 @@ import {
   compressImage, 
   extractVideoThumbnail 
 } from '../utils/mediaStorage';
+import { subscribeRealtime } from '../utils/realtime';
 import { InstagramIcon as Instagram, WhatsAppIcon } from './Icons';
 import { Logo } from './Logo';
 import { AdminLogin } from './AdminLogin';
@@ -130,6 +131,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     if (isAuthenticated) {
       loadData();
     }
+
+    // Real-time synchronization subscription
+    const unsubGallery = subscribeRealtime('GALLERY_UPDATED', (updatedPosts) => {
+      if (Array.isArray(updatedPosts)) {
+        setGalleryPosts(updatedPosts);
+      }
+    });
+
+    const unsubVideo = subscribeRealtime('FRANCHISE_VIDEO_UPDATED', (cfg) => {
+      if (cfg) {
+        setVideoConfig(cfg);
+      }
+    });
+
+    return () => {
+      unsubGallery();
+      unsubVideo();
+    };
   }, [isAuthenticated]);
 
   const handleLogout = () => {
@@ -204,10 +223,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       setGalleryPosts(postsData);
       setVideoConfig(vConfig);
 
-      // Prepopulate slot 1 if exists
-      const slot1 = postsData.find((p) => p.slot_number === 1);
-      if (slot1) {
-        setSlotForm(slot1);
+      // Sync currently active slot with loaded data
+      const currentActive = postsData.find((p) => Number(p.slot_number) === activeSlotNumber);
+      if (currentActive) {
+        setSlotForm(currentActive);
+      } else {
+        const slot1 = postsData.find((p) => Number(p.slot_number) === 1);
+        if (slot1) setSlotForm(slot1);
       }
     } catch (err) {
       console.error(err);
@@ -355,19 +377,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   const handleSaveSlot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!slotForm.media_url) {
-      alert('Informe a URL da imagem ou vídeo.');
+      alert('Informe a URL da imagem ou vídeo ou selecione um arquivo.');
       return;
     }
 
     setSaveStatus('Salvando...');
     try {
-      await saveD1GalleryPost({
+      const updatedPost: D1GalleryPost = {
         ...slotForm,
         slot_number: activeSlotNumber,
+        updated_at: new Date().toISOString(),
+      };
+
+      // 1. Instant 0ms Optimistic Update for Admin UI
+      setGalleryPosts((prev) => {
+        const filtered = prev.filter((p) => Number(p.slot_number) !== activeSlotNumber);
+        return [...filtered, updatedPost].sort((a, b) => Number(a.slot_number) - Number(b.slot_number));
       });
+
+      // 2. Persist to storage & broadcast in real-time
+      await saveD1GalleryPost(updatedPost);
+
       setSaveStatus('Salvo com sucesso!');
       setTimeout(() => setSaveStatus(''), 3000);
-      loadData();
     } catch {
       setSaveStatus('Erro ao salvar');
     }
