@@ -379,7 +379,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   const handleSaveSlot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!slotForm.media_url) {
-      alert('Informe a URL da imagem ou vídeo ou selecione um arquivo.');
+      alert('Selecione uma foto ou vídeo do seu celular ou computador antes de salvar.');
       return;
     }
 
@@ -953,28 +953,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   )}
                 </div>
 
-                {/* Media URL (Optional / Direct Link / CDN) */}
-                <div>
-                  <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
-                    Ou cole uma URL Externa (Opcional se já importou o arquivo acima)
-                  </label>
-                  <input
-                    type="text"
-                    value={slotForm.media_url.startsWith('data:') || slotForm.media_url.startsWith('blob:') ? '' : slotForm.media_url}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const isVideo = Boolean(val.match(/\.(mp4|mov|webm|m4v)(\?.*)?$/i));
-                      setSlotForm((prev) => ({ 
-                        ...prev, 
-                        media_url: val,
-                        type: isVideo ? 'video' : 'photo'
-                      }));
-                      setSlotFileNote('');
-                    }}
-                    placeholder={slotForm.media_url ? 'Arquivo já importado pelo dispositivo (ou cole nova URL)' : 'https://sua-cdn.com/foto.jpg ou /images/...'}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
-                  />
-                </div>
 
                 {/* Redirect Link (Instagram Permalink) */}
                 <div>
@@ -1062,7 +1040,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                       )
                     ) : (
                       <div className="p-6 text-center text-white/40 font-mono text-xs">
-                        Cole uma URL de mídia para ver o preview do card
+                        Importe uma foto ou vídeo para ver o preview do card
                       </div>
                     )}
 
@@ -1197,22 +1175,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 )}
               </div>
 
-              {/* Video URL (Optional fallback) */}
-              <div>
-                <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
-                  Ou URL Externa do Vídeo (Link direto .mp4, CDN, YouTube, Vimeo)
-                </label>
-                <input
-                  type="text"
-                  value={videoConfig.videoUrl.startsWith('data:') || videoConfig.videoUrl.startsWith('blob:') ? '' : videoConfig.videoUrl}
-                  onChange={(e) => {
-                    setVideoConfig((prev) => ({ ...prev, videoUrl: e.target.value }));
-                    setVideoFileNote('');
-                  }}
-                  placeholder={videoConfig.videoUrl ? 'Vídeo já importado pelo dispositivo (ou cole nova URL)' : 'https://sua-cdn.com/videos/apresentacao-franquia.mp4'}
-                  className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
-                />
-              </div>
 
               {/* Poster / Capa File Import */}
               <div className="bg-[#FAF5E8] border-2 border-dashed border-[#001219]/35 hover:border-[#001219] rounded-2xl p-5 transition-colors">
@@ -1268,22 +1230,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 )}
               </div>
 
-              {/* Poster / Thumbnail URL (Optional fallback) */}
-              <div>
-                <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
-                  Ou URL Externa da Imagem de Capa (Opcional)
-                </label>
-                <input
-                  type="text"
-                  value={videoConfig.posterUrl?.startsWith('data:') || videoConfig.posterUrl?.startsWith('blob:') ? '' : videoConfig.posterUrl}
-                  onChange={(e) => {
-                    setVideoConfig((prev) => ({ ...prev, posterUrl: e.target.value }));
-                    setPosterFileNote('');
-                  }}
-                  placeholder={videoConfig.posterUrl ? 'Capa já importada pelo dispositivo (ou cole nova URL)' : 'https://sua-cdn.com/images/capa-video.webp'}
-                  className="w-full px-4 py-3 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
-                />
-              </div>
 
               {/* Title */}
               <div>
