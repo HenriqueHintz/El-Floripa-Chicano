@@ -12,7 +12,8 @@ const CHANNEL_NAME = 'elchicano_realtime_sync';
 export type RealtimeEventType = 
   | 'GALLERY_UPDATED' 
   | 'FRANCHISE_VIDEO_UPDATED' 
-  | 'SETTINGS_UPDATED';
+  | 'SETTINGS_UPDATED'
+  | 'MENU_UPDATED';
 
 interface RealtimeMessage<T = any> {
   type: RealtimeEventType;

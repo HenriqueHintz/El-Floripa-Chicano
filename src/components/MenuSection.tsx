@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Product } from '../types';
-import { FULL_MENU_CATEGORIES, ALL_MENU_PRODUCTS } from '../data/menu';
 import { SITE_INFO } from '../data/constants';
+import { getLiveMenuData } from '../services/d1Api';
+import { subscribeRealtime } from '../utils/realtime';
 import { AmberCanvas } from './AmberCanvas';
 import { ProductModal } from './ProductModal';
 import { ShoppingBag, Eye, ExternalLink, ChevronLeft, ChevronRight, Search, X, Flame } from 'lucide-react';
@@ -15,6 +16,21 @@ export const MenuSection: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const categoryTrackRef = useRef<HTMLDivElement>(null);
 
+  // Live Dynamic Menu from CardápioWeb (0ms hydration from localStorage + real-time subscription)
+  const [liveMenu, setLiveMenu] = useState(() => getLiveMenuData());
+
+  useEffect(() => {
+    const unsub = subscribeRealtime('MENU_UPDATED', (payload) => {
+      if (payload && Array.isArray(payload.categories) && Array.isArray(payload.products)) {
+        setLiveMenu(payload);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const activeCategories = liveMenu.categories;
+  const activeProducts = liveMenu.products;
+
   const scrollCategoryTrack = (direction: 'left' | 'right') => {
     if (!categoryTrackRef.current) return;
     const scrollAmount = direction === 'left' ? -220 : 220;
@@ -25,9 +41,6 @@ export const MenuSection: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedCategory, searchQuery]);
-
-  const activeCategories = FULL_MENU_CATEGORIES;
-  const activeProducts = ALL_MENU_PRODUCTS;
 
   // Search & Category Filter
   const filteredProducts = useMemo(() => {

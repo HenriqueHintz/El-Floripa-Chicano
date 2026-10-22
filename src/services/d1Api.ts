@@ -600,5 +600,170 @@ export async function clearFranchiseVideoConfig(): Promise<boolean> {
   }
 }
 
+// -----------------------------------------------------------------------------
+// Live Menu Synchronization (CardápioWeb Pocket Floripa)
+// Target: https://app.cardapioweb.com/elchicano_pocketfloripa
+// API: https://integracao.cardapioweb.com/api/menu/company/categories?origin=catalogo&only_available_for=delivery
+// -----------------------------------------------------------------------------
+
+export const CARDAPIO_WEB_URL = 'https://app.cardapioweb.com/elchicano_pocketfloripa';
+export const CARDAPIO_WEB_COMPANY_ID = '24759';
+const LOCAL_STORAGE_LIVE_MENU_KEY = 'elchicano_live_menu_store';
+
+export interface LiveMenuData {
+  categories: MenuCategory[];
+  products: Product[];
+  lastSyncAt: string | null;
+  totalProducts: number;
+}
+
+export function getLiveMenuData(): LiveMenuData {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_LIVE_MENU_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed?.categories) && Array.isArray(parsed?.products) && parsed.products.length > 0) {
+        return {
+          categories: parsed.categories,
+          products: parsed.products,
+          lastSyncAt: parsed.lastSyncAt || null,
+          totalProducts: parsed.products.length,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Error reading live menu from localStorage:', err);
+  }
+
+  return {
+    categories: FULL_MENU_CATEGORIES,
+    products: ALL_MENU_PRODUCTS,
+    lastSyncAt: null,
+    totalProducts: ALL_MENU_PRODUCTS.length,
+  };
+}
+
+export async function syncMenuFromCardapioWeb(): Promise<{
+  success: boolean;
+  totalProducts: number;
+  totalCategories: number;
+  lastSyncAt: string;
+  error?: string;
+}> {
+  try {
+    const apiUrl = `https://integracao.cardapioweb.com/api/menu/company/categories?origin=catalogo&only_available_for=delivery`;
+
+    const res = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Company-ID': CARDAPIO_WEB_COMPANY_ID,
+        Accept: 'application/json, text/plain, */*',
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Servidor CardápioWeb respondeu com status ${res.status}`);
+    }
+
+    const rawCategories = await res.json();
+    if (!Array.isArray(rawCategories)) {
+      throw new Error('Formato de resposta inválido do CardápioWeb');
+    }
+
+    // Map categories and items to strict MenuCategory and Product models
+    const mappedCategories: MenuCategory[] = rawCategories
+      .filter((cat: any) => cat.status === 'ACTIVE' && Array.isArray(cat.items))
+      .map((cat: any, catIndex: number) => {
+        const catName = cat.name.trim();
+        const mappedItems: Product[] = (cat.items || [])
+          .filter((item: any) => item.status === 'ACTIVE')
+          .map((item: any) => {
+            const rawDesc = item.description || '';
+            const cleanDesc = rawDesc.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+            const imageUrl = item.image_url || '';
+
+            return {
+              id: item.id,
+              name: item.name.trim(),
+              category: catName,
+              categoryId: cat.id,
+              categoryName: catName,
+              description: cleanDesc,
+              price: Number(item.price) || 0,
+              promotionalPrice: item.promotional_price ? Number(item.promotional_price) : null,
+              image: imageUrl,
+              imageUrl: imageUrl,
+              thumbnailUrl: imageUrl,
+              status: item.status || 'ACTIVE',
+              addOns: item.add_ons || [],
+            };
+          });
+
+        return {
+          id: cat.id,
+          name: catName,
+          description: cat.description || null,
+          position: cat.position ?? catIndex,
+          imageUrl: cat.image_url || null,
+          items: mappedItems,
+        };
+      })
+      .filter((cat) => cat.items.length > 0);
+
+    const mappedProducts: Product[] = mappedCategories.flatMap((c) => c.items);
+
+    if (mappedProducts.length === 0) {
+      throw new Error('Nenhum produto ativo retornado pelo CardápioWeb.');
+    }
+
+    const syncTimestamp = new Date().toISOString();
+    const payloadToStore: LiveMenuData = {
+      categories: mappedCategories,
+      products: mappedProducts,
+      lastSyncAt: syncTimestamp,
+      totalProducts: mappedProducts.length,
+    };
+
+    localStorage.setItem(LOCAL_STORAGE_LIVE_MENU_KEY, JSON.stringify(payloadToStore));
+
+    try {
+      localStorage.setItem('elchicano_d1_menu_cache', JSON.stringify({
+        data: { products: mappedProducts },
+        timestamp: Date.now(),
+      }));
+    } catch {}
+
+    broadcastRealtime('MENU_UPDATED', payloadToStore);
+
+    return {
+      success: true,
+      totalProducts: mappedProducts.length,
+      totalCategories: mappedCategories.length,
+      lastSyncAt: syncTimestamp,
+    };
+  } catch (err: any) {
+    console.error('syncMenuFromCardapioWeb error:', err);
+    return {
+      success: false,
+      totalProducts: 0,
+      totalCategories: 0,
+      lastSyncAt: '',
+      error: err?.message || 'Falha ao sincronizar com CardápioWeb',
+    };
+  }
+}
+
+export function resetMenuToDefault(): LiveMenuData {
+  localStorage.removeItem(LOCAL_STORAGE_LIVE_MENU_KEY);
+  const defaultData: LiveMenuData = {
+    categories: FULL_MENU_CATEGORIES,
+    products: ALL_MENU_PRODUCTS,
+    lastSyncAt: null,
+    totalProducts: ALL_MENU_PRODUCTS.length,
+  };
+  broadcastRealtime('MENU_UPDATED', defaultData);
+  return defaultData;
+}
+
 
 

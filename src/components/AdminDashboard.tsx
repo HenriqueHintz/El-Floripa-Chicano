@@ -12,7 +12,12 @@ import {
   getFranchiseVideoConfig,
   saveFranchiseVideoConfig,
   clearFranchiseVideoConfig,
-  FranchiseVideoConfig
+  FranchiseVideoConfig,
+  getLiveMenuData,
+  syncMenuFromCardapioWeb,
+  resetMenuToDefault,
+  LiveMenuData,
+  CARDAPIO_WEB_URL
 } from '../services/d1Api';
 import { 
   Users, 
@@ -38,7 +43,11 @@ import {
   Smartphone,
   Laptop,
   Trash2,
-  Sparkles
+  Sparkles,
+  ShoppingBag,
+  RotateCcw,
+  Check,
+  UtensilsCrossed
 } from 'lucide-react';
 import { 
   saveMediaToDB, 
@@ -69,7 +78,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     return Boolean(getActiveSessionToken());
   });
 
-  const [activeTab, setActiveTab] = useState<'leads' | 'gallery' | 'video' | 'security'>('leads');
+  const [activeTab, setActiveTab] = useState<'leads' | 'gallery' | 'video' | 'menu_sync' | 'security'>('leads');
   const [leads, setLeads] = useState<FranchiseLead[]>([]);
   const [galleryPosts, setGalleryPosts] = useState<D1GalleryPost[]>([]);
   const [isLoadingLeads, setIsLoadingLeads] = useState(true);
@@ -105,6 +114,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   const [videoFileNote, setVideoFileNote] = useState<string>('');
   const [isUploadingPoster, setIsUploadingPoster] = useState(false);
   const [posterFileNote, setPosterFileNote] = useState<string>('');
+
+  // CardápioWeb Menu Synchronization State
+  const [liveMenuData, setLiveMenuData] = useState<LiveMenuData>(() => getLiveMenuData());
+  const [isSyncingMenu, setIsSyncingMenu] = useState(false);
+  const [syncStatusNote, setSyncStatusNote] = useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' });
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const [menuSelectedCategory, setMenuSelectedCategory] = useState<string>('all');
 
   // Security & Password Change State
   const [pwdCurrent, setPwdCurrent] = useState('');
@@ -149,11 +165,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       }
     });
 
+    const unsubMenu = subscribeRealtime('MENU_UPDATED', (payload) => {
+      if (payload && Array.isArray(payload.products)) {
+        setLiveMenuData(payload);
+      }
+    });
+
     return () => {
       unsubGallery();
       unsubVideo();
+      unsubMenu();
     };
   }, [isAuthenticated]);
+
+  const handleSyncCardapio = async () => {
+    setIsSyncingMenu(true);
+    setSyncStatusNote({ type: '', message: 'Conectando ao CardápioWeb e buscando catálogo completo...' });
+    try {
+      const res = await syncMenuFromCardapioWeb();
+      if (res.success) {
+        const fresh = getLiveMenuData();
+        setLiveMenuData(fresh);
+        setSyncStatusNote({
+          type: 'success',
+          message: `Cardápio sincronizado com sucesso! ${res.totalProducts} produtos em ${res.totalCategories} categorias foram atualizados com fotos, descrições e valores no site em tempo real.`
+        });
+      } else {
+        setSyncStatusNote({
+          type: 'error',
+          message: res.error || 'Falha ao sincronizar com CardápioWeb. Verifique sua conexão e tente novamente.'
+        });
+      }
+    } catch (err: any) {
+      setSyncStatusNote({
+        type: 'error',
+        message: `Erro na sincronização: ${err?.message || 'Falha inesperada.'}`
+      });
+    } finally {
+      setIsSyncingMenu(false);
+    }
+  };
+
+  const handleResetMenuToDefault = () => {
+    const confirmed = window.confirm('Tem certeza que deseja restaurar o cardápio padrão original de fábrica?');
+    if (!confirmed) return;
+    const def = resetMenuToDefault();
+    setLiveMenuData(def);
+    setSyncStatusNote({
+      type: 'success',
+      message: 'Cardápio restaurado com sucesso para o catálogo padrão.'
+    });
+  };
 
   const handleLogout = () => {
     destroySession();
@@ -674,6 +736,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 videoConfig.isEnabled ? 'bg-[#0A9396] text-white border border-[#001219]' : 'bg-white text-[#001219]/50 border border-[#001219]/20'
               }`}>
                 {videoConfig.isEnabled ? 'Ativo' : 'Oculto'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('menu_sync')}
+              className={`flex-1 md:w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-mono text-xs uppercase font-bold transition-all cursor-pointer border-2 shrink-0 ${
+                activeTab === 'menu_sync'
+                  ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[3px_3px_0px_#001219]'
+                  : 'bg-[#FAF5E8] text-[#001219]/70 border-[#001219]/15 hover:border-[#001219] hover:bg-white hover:text-[#001219]'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-4 h-4 text-[#AE2012]" />
+                <span>Atualizar Cardápio</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                activeTab === 'menu_sync' ? 'bg-[#001219] text-[#EE9B00]' : 'bg-white text-[#001219] border border-[#001219]/20'
+              }`}>
+                {liveMenuData.products.length} itens
               </span>
             </button>
 
@@ -1519,6 +1601,271 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 </div>
               </form>
             </div>
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* TAB 4: ATUALIZAR CARDÁPIO (CARDÁPIOWEB DIRECT SYNC) */}
+        {/* ================================================================= */}
+        {activeTab === 'menu_sync' && (
+          <div className="max-w-6xl mx-auto flex flex-col gap-6">
+            
+            {/* Header & CardápioWeb URL Link */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b-2 border-[#001219]/10 text-left">
+              <div>
+                <span className="font-mono text-[10px] text-[#CA6702] uppercase font-bold tracking-widest flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Sincronização Oficial em Tempo Real
+                </span>
+                <h2 className="font-display font-black text-2xl sm:text-3xl text-[#001219] uppercase">
+                  Atualizar Cardápio do Site
+                </h2>
+                <p className="font-sans text-xs text-[#001219]/70 mt-1 max-w-2xl">
+                  Integração direta com o sistema CardápioWeb oficial. Puxe todos os itens, fotos originais, descrições e preços para o site em 1 clique.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={CARDAPIO_WEB_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-[#FAF5E8] text-[#001219] border-2 border-[#001219] font-mono text-xs uppercase font-bold shadow-[2px_2px_0px_#001219] transition-all"
+                >
+                  <ExternalLink className="w-4 h-4 text-[#CA6702]" />
+                  <span>Abrir CardápioWeb</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Sync Action Control Card */}
+            <div className="bg-white border-3 border-[#001219] rounded-3xl p-5 sm:p-7 shadow-[6px_6px_0px_#001219] text-left">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b-2 border-[#001219]/10">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-mono uppercase font-black bg-[#EE9B00]/20 text-[#001219] border border-[#EE9B00]">
+                      Opção 5 • Sincronizador
+                    </span>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-mono uppercase font-black bg-[#0A9396]/15 text-[#005F73] border border-[#0A9396]/30">
+                      CORS Habilitado • 0ms Delay
+                    </span>
+                  </div>
+                  <h3 className="font-display font-black text-lg sm:text-xl text-[#001219] uppercase">
+                    Puxar Itens do CardápioWeb Pocket Floripa
+                  </h3>
+                  <p className="font-sans text-xs text-[#001219]/70 mt-1 leading-relaxed max-w-2xl">
+                    Ao acionar a sincronização, o sistema acessa <code className="bg-[#FAF5E8] px-1.5 py-0.5 rounded border border-[#001219]/20 font-mono font-bold text-[#AE2012]">app.cardapioweb.com/elchicano_pocketfloripa</code>, localiza produtos cadastrados, fotos dos itens e descrições, atualizando o catálogo da página principal automaticamente.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleResetMenuToDefault}
+                    className="px-4 py-3.5 rounded-2xl bg-[#FAF5E8] hover:bg-white text-[#001219] border-2 border-[#001219] font-mono text-xs uppercase font-bold transition-all shadow-[2px_2px_0px_#001219] flex items-center justify-center gap-2 cursor-pointer"
+                    title="Restaurar Cardápio Padrão"
+                  >
+                    <RotateCcw className="w-4 h-4 text-[#CA6702]" />
+                    <span>Restaurar Padrão</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSyncingMenu}
+                    onClick={handleSyncCardapio}
+                    className="px-6 py-4 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-sm uppercase tracking-wider border-3 border-[#001219] shadow-[4px_4px_0px_#001219] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
+                  >
+                    <RefreshCw className={`w-5 h-5 ${isSyncingMenu ? 'animate-spin' : ''}`} />
+                    <span>{isSyncingMenu ? 'Sincronizando...' : 'Atualizar Cardápio Agora'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Note Banner */}
+              {syncStatusNote.message && (
+                <div className={`mt-5 p-4 rounded-2xl border-2 font-mono text-xs font-bold flex items-start gap-3 ${
+                  syncStatusNote.type === 'success'
+                    ? 'bg-[#0A9396]/10 border-[#0A9396] text-[#005F73]'
+                    : syncStatusNote.type === 'error'
+                    ? 'bg-[#AE2012]/10 border-[#AE2012] text-[#AE2012]'
+                    : 'bg-[#EE9B00]/15 border-[#EE9B00] text-[#001219]'
+                }`}>
+                  {syncStatusNote.type === 'success' ? (
+                    <CheckCircle2 className="w-5 h-5 text-[#0A9396] shrink-0 mt-0.5" />
+                  ) : syncStatusNote.type === 'error' ? (
+                    <AlertCircle className="w-5 h-5 text-[#AE2012] shrink-0 mt-0.5" />
+                  ) : (
+                    <RefreshCw className="w-5 h-5 text-[#EE9B00] animate-spin shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1">
+                    <p className="leading-relaxed">{syncStatusNote.message}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
+                  <span className="block font-mono text-[10px] text-[#001219]/60 uppercase font-bold">Total Produtos</span>
+                  <p className="font-display font-black text-2xl sm:text-3xl text-[#001219] mt-1">
+                    {liveMenuData.products.length}
+                  </p>
+                  <span className="block font-mono text-[9px] text-[#0A9396] font-bold mt-1">No site agora</span>
+                </div>
+
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
+                  <span className="block font-mono text-[10px] text-[#001219]/60 uppercase font-bold">Categorias</span>
+                  <p className="font-display font-black text-2xl sm:text-3xl text-[#001219] mt-1">
+                    {liveMenuData.categories.length}
+                  </p>
+                  <span className="block font-mono text-[9px] text-[#CA6702] font-bold mt-1">Agrupamentos</span>
+                </div>
+
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
+                  <span className="block font-mono text-[10px] text-[#001219]/60 uppercase font-bold">Origem API</span>
+                  <p className="font-mono font-black text-sm sm:text-base text-[#001219] mt-2 truncate" title="CardápioWeb / Company 24759">
+                    CardápioWeb
+                  </p>
+                  <span className="block font-mono text-[9px] text-[#001219]/60 font-bold mt-1">Pocket Floripa</span>
+                </div>
+
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
+                  <span className="block font-mono text-[10px] text-[#001219]/60 uppercase font-bold">Última Sincronização</span>
+                  <p className="font-mono font-bold text-xs sm:text-sm text-[#001219] mt-2">
+                    {liveMenuData.lastSyncAt 
+                      ? new Date(liveMenuData.lastSyncAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                      : 'Padrão Inicial'}
+                  </p>
+                  <span className="block font-mono text-[9px] text-[#001219]/60 font-bold mt-1">
+                    {liveMenuData.lastSyncAt 
+                      ? new Date(liveMenuData.lastSyncAt).toLocaleDateString('pt-BR')
+                      : 'Sem sync externo'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Catalog Live Filter & Search */}
+            <div className="bg-white border-3 border-[#001219] rounded-3xl p-5 sm:p-6 shadow-[6px_6px_0px_#001219] text-left flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <UtensilsCrossed className="w-5 h-5 text-[#CA6702]" />
+                  <h4 className="font-display font-black text-lg uppercase text-[#001219]">
+                    Itens Ativos no Cardápio ({liveMenuData.products.length})
+                  </h4>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-4 h-4 text-[#001219]/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={menuSearchQuery}
+                    onChange={(e) => setMenuSearchQuery(e.target.value)}
+                    placeholder="Buscar por nome ou ingrediente..."
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#FAF5E8] border-2 border-[#001219]/25 text-xs font-sans text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
+                  />
+                </div>
+              </div>
+
+              {/* Category Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+                <button
+                  type="button"
+                  onClick={() => setMenuSelectedCategory('all')}
+                  className={`px-3.5 py-1.5 rounded-xl font-mono text-xs uppercase font-bold border-2 shrink-0 transition-all cursor-pointer ${
+                    menuSelectedCategory === 'all'
+                      ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[2px_2px_0px_#001219]'
+                      : 'bg-[#FAF5E8] text-[#001219]/70 border-[#001219]/15 hover:border-[#001219] hover:bg-white'
+                  }`}
+                >
+                  Todas ({liveMenuData.products.length})
+                </button>
+                {liveMenuData.categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setMenuSelectedCategory(cat.name)}
+                    className={`px-3.5 py-1.5 rounded-xl font-mono text-xs uppercase font-bold border-2 shrink-0 transition-all cursor-pointer ${
+                      menuSelectedCategory === cat.name
+                        ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[2px_2px_0px_#001219]'
+                        : 'bg-[#FAF5E8] text-[#001219]/70 border-[#001219]/15 hover:border-[#001219] hover:bg-white'
+                    }`}
+                  >
+                    {cat.name} ({cat.items.length})
+                  </button>
+                ))}
+              </div>
+
+              {/* Product Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                {liveMenuData.products
+                  .filter((p) => {
+                    const matchCat = menuSelectedCategory === 'all' || p.category === menuSelectedCategory;
+                    const q = menuSearchQuery.toLowerCase().trim();
+                    const matchQ = !q || p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
+                    return matchCat && matchQ;
+                  })
+                  .map((product) => (
+                    <div
+                      key={product.id}
+                      className="bg-[#FAF5E8] border-2 border-[#001219] rounded-2xl overflow-hidden flex flex-col justify-between hover:shadow-[4px_4px_0px_#001219] transition-all"
+                    >
+                      <div>
+                        {/* Product Image */}
+                        <div className="relative aspect-[16/10] bg-[#001219]/5 overflow-hidden border-b-2 border-[#001219]">
+                          {product.imageUrl ? (
+                            <img
+                              src={product.imageUrl}
+                              alt={product.name}
+                              loading="lazy"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/images/sections/about-food.webp';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-[#001219]/40 gap-1">
+                              <ImageIcon className="w-8 h-8" />
+                              <span className="font-mono text-[10px]">Sem foto</span>
+                            </div>
+                          )}
+                          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-mono uppercase font-black bg-[#001219] text-[#EE9B00] border border-[#EE9B00]">
+                            {product.category}
+                          </span>
+                          <span className="absolute top-2 right-2 px-2.5 py-0.5 rounded-full text-xs font-mono font-black bg-[#EE9B00] text-[#001219] border border-[#001219] shadow-sm">
+                            R$ {Number(product.price || 0).toFixed(2).replace('.', ',')}
+                          </span>
+                        </div>
+
+                        {/* Title & Description */}
+                        <div className="p-3.5">
+                          <h5 className="font-display font-black text-sm uppercase text-[#001219] leading-tight">
+                            {product.name}
+                          </h5>
+                          {product.description && (
+                            <p className="font-sans text-[11px] text-[#001219]/70 mt-1 line-clamp-3 leading-snug">
+                              {product.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Footer Badge */}
+                      <div className="p-3 pt-0 flex items-center justify-between border-t border-[#001219]/10 mt-2">
+                        <span className="font-mono text-[10px] text-[#0A9396] font-bold flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5 text-[#0A9396]" />
+                          Ativo no Site
+                        </span>
+                        <span className="font-mono text-[9px] text-[#001219]/50">
+                          ID: {product.id}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
           </div>
         )}
 
