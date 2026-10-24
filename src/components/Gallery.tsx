@@ -168,86 +168,96 @@ export const Gallery: React.FC = () => {
         <div
           key={card.id}
           onClick={() => setActiveItem(galleryItem)}
-          className="group relative bg-[#001219] border-4 border-[#001219] rounded-3xl overflow-hidden shadow-chicano hover:shadow-chicano-lg hover:-translate-y-2 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer flex flex-col justify-between will-change-transform"
+          className="group relative rounded-[2rem] p-1.5 sm:p-2 bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85),0_0_25px_rgba(238,155,0,0.12)] hover:border-[#EE9B00]/50 hover:shadow-[0_30px_70px_-10px_rgba(0,0,0,0.9),0_0_35px_rgba(238,155,0,0.25)] hover:-translate-y-2 transition-all duration-500 ease-out cursor-pointer flex flex-col justify-between will-change-transform"
         >
-          {/* Media Content - Paused by default, no autoPlay without user interaction */}
-          <div className="relative aspect-[4/3] bg-black overflow-hidden">
-            {post.type === 'video' ? (
-              <video
-                src={post.media_url}
-                loop
-                muted
-                playsInline
-                preload="metadata"
-                className="w-full h-full object-cover group-hover:scale-108 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
-              />
-            ) : (
-              <img
-                src={post.media_url}
-                alt={post.caption || 'Momento El Chicano Floripa'}
-                loading="lazy"
-                className="w-full h-full object-cover group-hover:scale-108 group-hover:brightness-105 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#001219] via-transparent to-transparent opacity-80 group-hover:opacity-50 transition-opacity duration-500 pointer-events-none" />
+          {/* Glow suave ao redor da moldura estilo seção História */}
+          <div className="absolute -inset-2 bg-[#EE9B00]/10 blur-xl rounded-[2.2rem] pointer-events-none -z-10 opacity-60 group-hover:opacity-100 group-hover:bg-[#EE9B00]/20 transition-all duration-500" />
 
-            {/* Video Badge / Play Icon */}
-            {post.type === 'video' && (
-              <div className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-[#EE9B00] text-[#001219] border-3 border-[#001219] shadow-md flex items-center justify-center group-hover:scale-115 group-hover:bg-[#CA6702] group-hover:text-white transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none">
-                <Play className="w-6 h-6 ml-0.5 fill-current" />
+          {/* Container interno com cantos arredondados finos */}
+          <div className="relative w-full h-full rounded-[1.6rem] overflow-hidden bg-[#001219] flex flex-col justify-between">
+            {/* Media Content - Pausado por padrão, sem autoPlay sem ação do usuário */}
+            <div className="relative aspect-[4/3] bg-black overflow-hidden">
+              {post.type === 'video' ? (
+                <video
+                  src={post.media_url}
+                  loop
+                  muted
+                  playsInline
+                  preload="metadata"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700 ease-out"
+                />
+              ) : (
+                <img
+                  src={post.media_url}
+                  alt={post.caption || 'Momento El Chicano Floripa'}
+                  loading="lazy"
+                  className="w-full h-full object-cover group-hover:scale-105 group-hover:brightness-105 transition-all duration-700 ease-out"
+                />
+              )}
+              {/* Vinheta sutil na base da foto/vídeo */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#001219]/80 via-transparent to-transparent pointer-events-none z-10" />
+
+              {/* Video Badge / Play Icon */}
+              {post.type === 'video' && (
+                <div className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-[#EE9B00] text-[#001219] border-2 border-[#001219] shadow-md flex items-center justify-center group-hover:scale-110 group-hover:bg-[#CA6702] group-hover:text-white transition-all duration-300 pointer-events-none z-20">
+                  <Play className="w-6 h-6 ml-0.5 fill-current" />
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Caption & Instagram Icon */}
+            <div className="p-4 bg-[#001219]/90 backdrop-blur-sm flex items-center justify-between gap-3 text-left border-t border-white/10 z-20">
+              <p className="font-sans text-xs sm:text-sm text-[#FAF5E8]/90 font-medium line-clamp-1 flex-1">
+                {post.caption || 'Momento El Chicano Floripa'}
+              </p>
+              <div className="w-7 h-7 rounded-full bg-white/10 text-[#E9D8A6] flex items-center justify-center group-hover:bg-[#EE9B00] group-hover:text-[#001219] transition-all shrink-0">
+                <InstagramIcon className="w-3.5 h-3.5" />
               </div>
-            )}
-          </div>
-
-          {/* Bottom Caption & Instagram Icon (NO like counter) */}
-          <div className="p-4 bg-[#001f2d] flex items-center justify-between gap-3 text-left border-t border-white/5">
-            <p className="font-sans text-xs text-[#FAF5E8]/90 font-medium line-clamp-1 flex-1">
-              {post.caption || 'Momento El Chicano Floripa'}
-            </p>
-            <div className="w-7 h-7 rounded-full bg-white/5 text-white/60 flex items-center justify-center group-hover:bg-[#EE9B00] group-hover:text-[#001219] transition-all shrink-0">
-              <InstagramIcon className="w-3.5 h-3.5" />
             </div>
           </div>
         </div>
       );
     }
 
-    // Fallback: Empty Structural Placeholder Slot (NO top tags, NO like counter)
+    // Fallback: Empty Structural Placeholder Slot com estilo da seção História
     return (
       <a
         key={card.id}
         href={SITE_INFO.instagramUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="group relative bg-[#001219] border-4 border-[#001219] rounded-3xl overflow-hidden shadow-chicano hover:shadow-chicano-lg hover:-translate-y-2 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col justify-between cursor-pointer will-change-transform"
+        className="group relative rounded-[2rem] p-1.5 sm:p-2 bg-white/5 backdrop-blur-md border border-white/15 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.7)] hover:border-[#EE9B00]/40 hover:shadow-[0_25px_60px_-10px_rgba(0,0,0,0.85),0_0_25px_rgba(238,155,0,0.15)] hover:-translate-y-2 transition-all duration-500 ease-out flex flex-col justify-between cursor-pointer will-change-transform"
       >
-        {/* Empty Structural Media Box */}
-        <div className="relative aspect-[4/3] bg-gradient-to-br from-[#001f2d] via-[#001824] to-[#001219] overflow-hidden flex flex-col items-center justify-center p-6 text-center">
-          <div className="absolute inset-3 border-2 border-dashed border-[#94D2BD]/15 rounded-2xl pointer-events-none group-hover:border-[#EE9B00]/40 transition-colors duration-400" />
-          <div className="absolute -top-10 -right-10 w-28 h-28 bg-[#94D2BD]/5 rounded-full blur-xl pointer-events-none group-hover:bg-[#EE9B00]/10 transition-colors" />
+        <div className="absolute -inset-2 bg-[#EE9B00]/5 blur-xl rounded-[2.2rem] pointer-events-none -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-          {/* Center Instagram Icon */}
-          <div className="w-14 h-14 rounded-2xl bg-[#002636] border-2 border-[#94D2BD]/30 text-[#94D2BD] flex items-center justify-center shadow-md group-hover:scale-110 group-hover:bg-[#EE9B00] group-hover:text-[#001219] group-hover:border-[#001219] transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]">
-            <InstagramIcon className="w-7 h-7" />
+        <div className="relative w-full h-full rounded-[1.6rem] overflow-hidden bg-[#001219] flex flex-col justify-between">
+          {/* Empty Structural Media Box */}
+          <div className="relative aspect-[4/3] bg-gradient-to-br from-[#001f2d]/60 via-[#001824]/60 to-[#001219]/80 overflow-hidden flex flex-col items-center justify-center p-6 text-center">
+            <div className="absolute inset-3 border-2 border-dashed border-[#94D2BD]/15 rounded-2xl pointer-events-none group-hover:border-[#EE9B00]/40 transition-colors duration-400" />
+
+            {/* Center Instagram Icon */}
+            <div className="w-13 h-13 rounded-2xl bg-white/5 border border-white/10 text-[#94D2BD] flex items-center justify-center shadow-md group-hover:scale-110 group-hover:bg-[#EE9B00] group-hover:text-[#001219] group-hover:border-[#001219] transition-all duration-400 ease-out">
+              <InstagramIcon className="w-6 h-6" />
+            </div>
+
+            <p className="font-mono text-[10px] text-[#94D2BD]/80 uppercase tracking-wider font-bold mt-3 group-hover:text-white transition-colors">
+              Aguardando Mídia
+            </p>
+            <p className="font-sans text-[11px] text-[#FAF5E8]/40 mt-0.5">
+              Slot reservado para o feed
+            </p>
           </div>
 
-          <p className="font-mono text-[10px] text-[#94D2BD]/80 uppercase tracking-wider font-bold mt-3 group-hover:text-white transition-colors">
-            Aguardando Mídia
-          </p>
-          <p className="font-sans text-[11px] text-[#FAF5E8]/40 mt-0.5">
-            Slot reservado para o feed
-          </p>
-        </div>
+          {/* Bottom Bar */}
+          <div className="p-4 bg-[#001219]/90 backdrop-blur-sm flex items-center justify-between gap-3 text-left border-t border-white/10">
+            <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#E9D8A6]/70 group-hover:text-[#EE9B00] transition-colors">
+              <InstagramIcon className="w-3.5 h-3.5" />
+              <span>@elchicanofloripa</span>
+            </div>
 
-        {/* Bottom Bar */}
-        <div className="p-4 bg-[#001f2d] flex items-center justify-between gap-3 text-left border-t border-white/5">
-          <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#E9D8A6]/70 group-hover:text-[#EE9B00] transition-colors">
-            <InstagramIcon className="w-3.5 h-3.5" />
-            <span>@elchicanofloripa</span>
-          </div>
-
-          <div className="w-7 h-7 rounded-full bg-white/5 text-white/60 flex items-center justify-center group-hover:bg-[#EE9B00] group-hover:text-[#001219] transition-all shrink-0">
-            <ExternalLink className="w-3.5 h-3.5" />
+            <div className="w-7 h-7 rounded-full bg-white/10 text-white/60 flex items-center justify-center group-hover:bg-[#EE9B00] group-hover:text-[#001219] transition-all shrink-0">
+              <ExternalLink className="w-3.5 h-3.5" />
+            </div>
           </div>
         </div>
       </a>
