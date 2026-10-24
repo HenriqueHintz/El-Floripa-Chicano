@@ -33,7 +33,7 @@ const FIXED_VIDEO_POST: D1GalleryPost = {
   media_url: '/videos/galeria/video-1.mp4',
   thumbnail_url: '/videos/galeria/video-1.mp4',
   permalink: SITE_INFO.instagramUrl,
-  caption: 'Momento El Chicano Floripa - Tex-Bra-Mex em Ação',
+  caption: 'O começo do El Chicano',
   category: 'Vídeo Oficial',
   is_active: 1,
 };
