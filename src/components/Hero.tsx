@@ -171,8 +171,8 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* 7. Personagem Chicano no Canto Inferior (Exclusivo Mobile, Fundo 100% Transparente) */}
-      <div className="sm:hidden absolute bottom-0 right-0 z-20 pointer-events-none select-none w-44 xs:w-52 max-w-[50vw]">
+      {/* 7. Personagem Chicano Centralizado na Base (Exclusivo Mobile, Fundo 100% Transparente) */}
+      <div className="sm:hidden absolute bottom-0 left-1/2 -translate-x-1/2 z-20 pointer-events-none select-none w-48 xs:w-56 max-w-[70vw] flex justify-center">
         <img
           src="/images/chicano/chicano-personagem.webp"
           alt="Personagem El Chicano"
