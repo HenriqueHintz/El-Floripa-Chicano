@@ -99,7 +99,16 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
           {/* Título Monumental: Feito com Fé, Fogo e Coração */}
           <h1 className="font-display font-black text-4xl sm:text-6xl md:text-7xl lg:text-8xl text-white uppercase leading-[0.92] tracking-tight">
             <span className="block drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)] animate-hero-fade-1">
-              FEITO COM FÉ,
+              FEITO COM{' '}
+              <span
+                className="bg-gradient-to-r from-[#FF4D00] via-[#E63946] to-[#D62828] bg-clip-text text-transparent filter drop-shadow-[0_0_35px_rgba(230,57,70,0.65)]"
+                style={{
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                FÉ,
+              </span>
             </span>
             <span
               className="block animate-hero-fade-2 bg-gradient-to-r from-[#FF4D00] via-[#E63946] to-[#D62828] bg-clip-text text-transparent filter drop-shadow-[0_0_35px_rgba(230,57,70,0.65)]"
