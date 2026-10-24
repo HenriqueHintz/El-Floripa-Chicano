@@ -98,8 +98,8 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
               </div>
             </div>
 
-            {/* Título Monumental: Feito com Fé, Fogo e Coração */}
-            <h1 className="font-display font-black text-4xl sm:text-6xl md:text-7xl lg:text-8xl text-white uppercase leading-[0.92] tracking-tight">
+            {/* Título Monumental: Feito com Fé, Fogo e Coração (Deslocado mais para baixo no mobile com mt-10) */}
+            <h1 className="mt-10 sm:mt-0 font-display font-black text-4xl sm:text-6xl md:text-7xl lg:text-8xl text-white uppercase leading-[0.92] tracking-tight">
               <span className="block drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)] animate-hero-fade-1">
                 FEITO COM{' '}
                 <span
