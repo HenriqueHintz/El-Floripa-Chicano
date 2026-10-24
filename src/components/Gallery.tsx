@@ -39,7 +39,6 @@ const FIXED_VIDEO_POST: D1GalleryPost = {
 };
 
 export const Gallery: React.FC = () => {
-  const [filter, setFilter] = useState<'all' | 'video' | 'photo'>('all');
   const [activeItem, setActiveItem] = useState<GalleryItem | null>(null);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [d1Posts, setD1Posts] = useState<D1GalleryPost[]>([]);
@@ -131,18 +130,8 @@ export const Gallery: React.FC = () => {
     likes: (p.likes || 120) + (likedIds.has(String(p.id || p.slot_number)) ? 1 : 0),
   }));
 
-  // Filtered cards across all 8 slots
-  const displayedCards = GALLERY_CARDS.filter((card) => {
-    if (filter === 'all') return true;
-    const post = getPostForCard(card);
-    if (post) return post.type === filter;
-    return filter === 'photo'; // empty slots default to photos
-  });
-
-  // Reset pagination when filter changes
-  useEffect(() => {
-    setMobilePage(0);
-  }, [filter]);
+  // All 8 cards (Slot 1 fixed + Slots 2-8 from Admin)
+  const displayedCards = GALLERY_CARDS;
 
   const totalMobilePages = Math.ceil(displayedCards.length / CARDS_PER_MOBILE_PAGE);
   const mobileCards = displayedCards.slice(
@@ -312,43 +301,6 @@ export const Gallery: React.FC = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 self-start md:self-end w-full md:w-auto">
-            {/* Filter Toggle */}
-            <div className="flex items-center gap-1.5 p-1 bg-black/40 border-2 border-white/10 rounded-2xl">
-              <button
-                type="button"
-                onClick={() => setFilter('all')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer ${
-                  filter === 'all'
-                    ? 'bg-[#EE9B00] text-[#001219] shadow-sm font-black'
-                    : 'text-[#E9D8A6]/70 hover:text-white'
-                }`}
-              >
-                Tudo
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilter('video')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer ${
-                  filter === 'video'
-                    ? 'bg-[#EE9B00] text-[#001219] shadow-sm font-black'
-                    : 'text-[#E9D8A6]/70 hover:text-white'
-                }`}
-              >
-                Vídeos
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilter('photo')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer ${
-                  filter === 'photo'
-                    ? 'bg-[#EE9B00] text-[#001219] shadow-sm font-black'
-                    : 'text-[#E9D8A6]/70 hover:text-white'
-                }`}
-              >
-                Fotos
-              </button>
-            </div>
-
             <a
               href={SITE_INFO.instagramUrl}
               target="_blank"
