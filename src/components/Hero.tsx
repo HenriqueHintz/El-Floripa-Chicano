@@ -81,9 +81,9 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
           }}
         >
           {/* Bloco de Textos e Badges */}
-          <div className="flex flex-col items-start my-auto sm:my-0">
-            {/* Badges de Autenticidade */}
-            <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="flex flex-col items-start my-auto sm:my-0 w-full sm:w-auto">
+            {/* Badges de Autenticidade (Centralizados no Mobile) */}
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 mb-4 sm:mb-6 w-full sm:w-auto">
               <span className="font-warmth text-2xl sm:text-3xl text-[#EE9B00] -rotate-3 block select-none animate-hero-stamp drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
                 Autêntico!
               </span>
@@ -137,8 +137,8 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
               </span>
             </h1>
 
-            {/* Subtítulo: Apresentação Limpa com Quebra no Mobile e Posicionado Mais Abaixo */}
-            <div className="mt-12 sm:mt-8 flex items-center gap-3 sm:gap-4 animate-hero-fade-3">
+            {/* Subtítulo: Apresentação Limpa com Quebra no Mobile e Espaço Reduzido (mt-4) */}
+            <div className="mt-4 sm:mt-8 flex items-center gap-3 sm:gap-4 animate-hero-fade-3">
               <div className="w-1.5 h-10 sm:h-12 rounded-full bg-gradient-to-b from-[#FF4D00] to-[#E63946] shadow-[0_0_15px_rgba(230,57,70,0.8)] shrink-0" />
               <p className="font-sans text-base sm:text-2xl md:text-3xl text-[#FAF5E8] font-medium leading-snug sm:leading-relaxed drop-shadow-[0_3px_12px_rgba(0,0,0,0.95)]">
                 Comida mexicana <br className="sm:hidden" />com alma brasileira.
@@ -146,8 +146,8 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* 6. Botões de Ação: Centralizados e acima da pimenta no mobile (justify-center pb-32), posição original no desktop (sm:justify-start sm:mt-10 sm:pb-0) */}
-          <div className="flex flex-row flex-wrap items-center justify-center sm:justify-start gap-2.5 sm:gap-4 mt-auto sm:mt-10 pb-32 sm:pb-0 w-full sm:w-auto self-center sm:self-start animate-hero-fade-4">
+          {/* 6. Botões de Ação: Centralizados e posicionados mais acima no mobile (pb-44), posição original no desktop (sm:justify-start sm:mt-10 sm:pb-0) */}
+          <div className="flex flex-row flex-wrap items-center justify-center sm:justify-start gap-2.5 sm:gap-4 mt-auto sm:mt-10 pb-44 sm:pb-0 w-full sm:w-auto self-center sm:self-start animate-hero-fade-4">
             <a
               href={SITE_INFO.cardapioWebUrl}
               target="_blank"
