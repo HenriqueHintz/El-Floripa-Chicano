@@ -101,14 +101,21 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
             <span className="block drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)] animate-hero-fade-1">
               FEITO COM FÉ,
             </span>
-            <span className="block animate-hero-fade-2 animate-fire-text filter drop-shadow-[0_0_35px_rgba(238,155,0,0.6)]">
+            <span
+              className="block animate-hero-fade-2 bg-gradient-to-r from-[#FF4D00] via-[#E63946] to-[#D62828] bg-clip-text text-transparent filter drop-shadow-[0_0_35px_rgba(230,57,70,0.65)]"
+              style={{
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
               FOGO E CORAÇÃO.
             </span>
           </h1>
 
-          {/* Subtítulo com Backdrop Escuro Neutro para Legibilidade Absoluta */}
-          <div className="mt-6 sm:mt-8 px-5 py-3.5 rounded-2xl bg-black/60 backdrop-blur-md border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.6)] animate-hero-fade-3">
-            <p className="font-sans text-lg sm:text-2xl md:text-3xl text-[#E9D8A6] font-semibold leading-relaxed drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
+          {/* Subtítulo: Apresentação Limpa com Indicador de Fogo sem Caixa */}
+          <div className="mt-6 sm:mt-8 flex items-center gap-4 animate-hero-fade-3">
+            <div className="w-1.5 h-10 sm:h-12 rounded-full bg-gradient-to-b from-[#FF4D00] to-[#E63946] shadow-[0_0_15px_rgba(230,57,70,0.8)] shrink-0" />
+            <p className="font-sans text-lg sm:text-2xl md:text-3xl text-[#FAF5E8] font-medium leading-relaxed drop-shadow-[0_3px_12px_rgba(0,0,0,0.95)]">
               {SITE_INFO.subtitle}
             </p>
           </div>
