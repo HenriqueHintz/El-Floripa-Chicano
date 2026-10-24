@@ -171,8 +171,8 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* 7. Personagem Chicano: Centralizado na Base no Mobile e no Canto Inferior Direito no Desktop (Fundo 100% Transparente) */}
-      <div className="absolute bottom-0 z-20 pointer-events-none select-none left-1/2 -translate-x-1/2 sm:left-auto sm:right-4 md:right-8 lg:right-12 sm:translate-x-0 w-48 xs:w-56 sm:w-72 md:w-80 lg:w-96 max-w-[70vw] sm:max-w-none flex justify-center sm:block">
+      {/* 7. Personagem Chicano: Centralizado na Base no Mobile e Posicionado no Canto Inferior Direito mais para a Esquerda no Desktop (Fundo 100% Transparente) */}
+      <div className="absolute bottom-0 z-20 pointer-events-none select-none left-1/2 -translate-x-1/2 sm:left-auto sm:right-10 md:right-16 lg:right-24 xl:right-32 sm:translate-x-0 w-48 xs:w-56 sm:w-72 md:w-80 lg:w-96 max-w-[70vw] sm:max-w-none flex justify-center sm:block">
         <img
           src="/images/chicano/chicano-personagem.webp"
           alt="Personagem El Chicano"
