@@ -309,27 +309,15 @@ import { broadcastRealtime } from '../utils/realtime';
 
 const LOCAL_STORAGE_GALLERY_KEY = 'elchicano_d1_gallery_store';
 
-const DEFAULT_GALLERY_SLOTS: D1GalleryPost[] = [
-  {
-    slot_number: 1,
-    type: 'video',
-    media_url: '/videos/galeria/video-1.mp4',
-    thumbnail_url: '/videos/galeria/video-1.mp4',
-    permalink: 'https://www.instagram.com/elchicanofloripa/',
-    caption: 'Momento El Chicano Floripa - Tex-Bra-Mex em Ação',
-    is_active: 1,
-    likes: 248,
-  },
-  ...[2, 3, 4, 5, 6, 7].map((num) => ({
-    slot_number: num,
-    type: 'photo' as const,
-    media_url: '',
-    thumbnail_url: '',
-    permalink: 'https://www.instagram.com/elchicanofloripa/',
-    caption: `Post #${num}`,
-    is_active: 1,
-  })),
-];
+const DEFAULT_GALLERY_SLOTS: D1GalleryPost[] = [1, 2, 3, 4, 5, 6, 7].map((num) => ({
+  slot_number: num,
+  type: 'photo',
+  media_url: '',
+  thumbnail_url: '',
+  permalink: 'https://www.instagram.com/elchicanofloripa/',
+  caption: `Post #${num}`,
+  is_active: 1,
+}));
 
 export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
   let posts: D1GalleryPost[] = [];

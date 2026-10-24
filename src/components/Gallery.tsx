@@ -4,24 +4,48 @@ import { SITE_INFO } from '../data/constants';
 import { getD1GalleryPosts, D1GalleryPost } from '../services/d1Api';
 import { LightboxModal } from './LightboxModal';
 import { InstagramIcon } from './Icons';
-import { Play, Heart, ShoppingBag, Eye, ExternalLink } from 'lucide-react';
+import { Play, ShoppingBag, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { subscribeRealtime } from '../utils/realtime';
 
-const EMPTY_INSTAGRAM_SLOTS = [
-  { id: 1, label: 'Post #01' },
-  { id: 2, label: 'Post #02' },
-  { id: 3, label: 'Post #03' },
-  { id: 4, label: 'Post #04' },
-  { id: 5, label: 'Post #05' },
-  { id: 6, label: 'Post #06' },
-  { id: 7, label: 'Post #07' },
+export interface GalleryCardConfig {
+  id: string;
+  isFixed: boolean;
+  adminSlot: number | null;
+}
+
+// 8 total cards: Card 1 is permanently fixed with VIDEO 1.mp4.
+// Cards 2 to 8 map directly to the 7 admin configurable slots (Slots 1 to 7).
+const GALLERY_CARDS: GalleryCardConfig[] = [
+  { id: 'fixed-video-1', isFixed: true, adminSlot: null },
+  { id: 'admin-slot-1', isFixed: false, adminSlot: 1 },
+  { id: 'admin-slot-2', isFixed: false, adminSlot: 2 },
+  { id: 'admin-slot-3', isFixed: false, adminSlot: 3 },
+  { id: 'admin-slot-4', isFixed: false, adminSlot: 4 },
+  { id: 'admin-slot-5', isFixed: false, adminSlot: 5 },
+  { id: 'admin-slot-6', isFixed: false, adminSlot: 6 },
+  { id: 'admin-slot-7', isFixed: false, adminSlot: 7 },
 ];
+
+const FIXED_VIDEO_POST: D1GalleryPost = {
+  id: 'fixed-video-1',
+  slot_number: 0,
+  type: 'video',
+  media_url: '/videos/galeria/video-1.mp4',
+  thumbnail_url: '/videos/galeria/video-1.mp4',
+  permalink: SITE_INFO.instagramUrl,
+  caption: 'Momento El Chicano Floripa - Tex-Bra-Mex em Ação',
+  category: 'Vídeo Oficial',
+  is_active: 1,
+};
 
 export const Gallery: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'video' | 'photo'>('all');
   const [activeItem, setActiveItem] = useState<GalleryItem | null>(null);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [d1Posts, setD1Posts] = useState<D1GalleryPost[]>([]);
+  const [mobilePage, setMobilePage] = useState(0);
+
+  const CARDS_PER_MOBILE_PAGE = 3;
 
   useEffect(() => {
     let isMounted = true;
@@ -82,53 +106,153 @@ export const Gallery: React.FC = () => {
     });
   };
 
-  const FIXED_VIDEO_POST: D1GalleryPost = {
-    id: 'fixed-video-1',
-    slot_number: 1,
-    type: 'video',
-    media_url: '/videos/galeria/video-1.mp4',
-    thumbnail_url: '/videos/galeria/video-1.mp4',
-    permalink: SITE_INFO.instagramUrl,
-    caption: 'Momento El Chicano Floripa - Tex-Bra-Mex em Ação',
-    category: 'Vídeo Oficial',
-    likes: 248,
-    is_active: 1,
-  };
-
-  const getPostForSlot = (slotId: number): D1GalleryPost | undefined => {
-    if (slotId === 1) {
+  const getPostForCard = (card: GalleryCardConfig): D1GalleryPost | undefined => {
+    if (card.isFixed) {
       return FIXED_VIDEO_POST;
     }
     return d1Posts.find(
-      (p) => Number(p.slot_number) === slotId && Boolean(p.media_url) && p.is_active !== 0
+      (p) => Number(p.slot_number) === card.adminSlot && Boolean(p.media_url) && p.is_active !== 0
     );
   };
 
-  // Active posts including the permanently fixed video at Slot 1
+  // All active posts for LightboxModal
   const allActivePosts: D1GalleryPost[] = [
     FIXED_VIDEO_POST,
-    ...d1Posts.filter(
-      (p) => Number(p.slot_number) !== 1 && Boolean(p.media_url) && p.is_active !== 0
-    ),
+    ...d1Posts.filter((p) => Boolean(p.media_url) && p.is_active !== 0),
   ];
 
-  // Convert active posts to GalleryItem for LightboxModal
   const lightboxItems: GalleryItem[] = allActivePosts.map((p) => ({
-    id: `slot-${p.slot_number}`,
+    id: String(p.id || p.slot_number),
     type: p.type === 'video' ? 'video' : 'photo',
     src: p.media_url,
     thumbnail: p.thumbnail_url || p.media_url,
-    caption: p.caption || `Momento El Chicano Floripa (Post #${p.slot_number})`,
+    caption: p.caption || 'Momento El Chicano Floripa',
     category: p.category || (p.type === 'video' ? 'Vídeo Oficial' : 'Instagram'),
-    likes: (p.likes || 120) + (likedIds.has(`slot-${p.slot_number}`) ? 1 : 0),
+    likes: (p.likes || 120) + (likedIds.has(String(p.id || p.slot_number)) ? 1 : 0),
   }));
 
-  const displayedSlots = EMPTY_INSTAGRAM_SLOTS.filter((slot) => {
+  // Filtered cards across all 8 slots
+  const displayedCards = GALLERY_CARDS.filter((card) => {
     if (filter === 'all') return true;
-    const post = getPostForSlot(slot.id);
+    const post = getPostForCard(card);
     if (post) return post.type === filter;
-    return filter === 'photo';
+    return filter === 'photo'; // empty slots default to photos
   });
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    setMobilePage(0);
+  }, [filter]);
+
+  const totalMobilePages = Math.ceil(displayedCards.length / CARDS_PER_MOBILE_PAGE);
+  const mobileCards = displayedCards.slice(
+    mobilePage * CARDS_PER_MOBILE_PAGE,
+    (mobilePage + 1) * CARDS_PER_MOBILE_PAGE
+  );
+
+  const renderCard = (card: GalleryCardConfig) => {
+    const post = getPostForCard(card);
+
+    if (post) {
+      const galleryItem: GalleryItem = {
+        id: String(post.id || post.slot_number),
+        type: post.type === 'video' ? 'video' : 'photo',
+        src: post.media_url,
+        thumbnail: post.thumbnail_url || post.media_url,
+        caption: post.caption || 'Momento El Chicano Floripa',
+        category: post.category || (post.type === 'video' ? 'Vídeo Oficial' : 'Instagram'),
+        likes: post.likes || 120,
+      };
+
+      return (
+        <div
+          key={card.id}
+          onClick={() => setActiveItem(galleryItem)}
+          className="group relative bg-[#001219] border-4 border-[#001219] rounded-3xl overflow-hidden shadow-chicano hover:shadow-chicano-lg hover:-translate-y-2 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer flex flex-col justify-between will-change-transform"
+        >
+          {/* Media Content - Paused by default, no autoPlay without user interaction */}
+          <div className="relative aspect-[4/3] bg-black overflow-hidden">
+            {post.type === 'video' ? (
+              <video
+                src={post.media_url}
+                loop
+                muted
+                playsInline
+                preload="metadata"
+                className="w-full h-full object-cover group-hover:scale-108 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+              />
+            ) : (
+              <img
+                src={post.media_url}
+                alt={post.caption || 'Momento El Chicano Floripa'}
+                loading="lazy"
+                className="w-full h-full object-cover group-hover:scale-108 group-hover:brightness-105 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#001219] via-transparent to-transparent opacity-80 group-hover:opacity-50 transition-opacity duration-500 pointer-events-none" />
+
+            {/* Video Badge / Play Icon */}
+            {post.type === 'video' && (
+              <div className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-[#EE9B00] text-[#001219] border-3 border-[#001219] shadow-md flex items-center justify-center group-hover:scale-115 group-hover:bg-[#CA6702] group-hover:text-white transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none">
+                <Play className="w-6 h-6 ml-0.5 fill-current" />
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Caption & Instagram Icon (NO like counter) */}
+          <div className="p-4 bg-[#001f2d] flex items-center justify-between gap-3 text-left border-t border-white/5">
+            <p className="font-sans text-xs text-[#FAF5E8]/90 font-medium line-clamp-1 flex-1">
+              {post.caption || 'Momento El Chicano Floripa'}
+            </p>
+            <div className="w-7 h-7 rounded-full bg-white/5 text-white/60 flex items-center justify-center group-hover:bg-[#EE9B00] group-hover:text-[#001219] transition-all shrink-0">
+              <InstagramIcon className="w-3.5 h-3.5" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Fallback: Empty Structural Placeholder Slot (NO top tags, NO like counter)
+    return (
+      <a
+        key={card.id}
+        href={SITE_INFO.instagramUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group relative bg-[#001219] border-4 border-[#001219] rounded-3xl overflow-hidden shadow-chicano hover:shadow-chicano-lg hover:-translate-y-2 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col justify-between cursor-pointer will-change-transform"
+      >
+        {/* Empty Structural Media Box */}
+        <div className="relative aspect-[4/3] bg-gradient-to-br from-[#001f2d] via-[#001824] to-[#001219] overflow-hidden flex flex-col items-center justify-center p-6 text-center">
+          <div className="absolute inset-3 border-2 border-dashed border-[#94D2BD]/15 rounded-2xl pointer-events-none group-hover:border-[#EE9B00]/40 transition-colors duration-400" />
+          <div className="absolute -top-10 -right-10 w-28 h-28 bg-[#94D2BD]/5 rounded-full blur-xl pointer-events-none group-hover:bg-[#EE9B00]/10 transition-colors" />
+
+          {/* Center Instagram Icon */}
+          <div className="w-14 h-14 rounded-2xl bg-[#002636] border-2 border-[#94D2BD]/30 text-[#94D2BD] flex items-center justify-center shadow-md group-hover:scale-110 group-hover:bg-[#EE9B00] group-hover:text-[#001219] group-hover:border-[#001219] transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]">
+            <InstagramIcon className="w-7 h-7" />
+          </div>
+
+          <p className="font-mono text-[10px] text-[#94D2BD]/80 uppercase tracking-wider font-bold mt-3 group-hover:text-white transition-colors">
+            Aguardando Mídia
+          </p>
+          <p className="font-sans text-[11px] text-[#FAF5E8]/40 mt-0.5">
+            Slot reservado para o feed
+          </p>
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="p-4 bg-[#001f2d] flex items-center justify-between gap-3 text-left border-t border-white/5">
+          <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#E9D8A6]/70 group-hover:text-[#EE9B00] transition-colors">
+            <InstagramIcon className="w-3.5 h-3.5" />
+            <span>@elchicanofloripa</span>
+          </div>
+
+          <div className="w-7 h-7 rounded-full bg-white/5 text-white/60 flex items-center justify-center group-hover:bg-[#EE9B00] group-hover:text-[#001219] transition-all shrink-0">
+            <ExternalLink className="w-3.5 h-3.5" />
+          </div>
+        </div>
+      </a>
+    );
+  };
 
   return (
     <section
@@ -164,7 +288,7 @@ export const Gallery: React.FC = () => {
             </h2>
 
             <p className="font-sans text-sm md:text-base text-[#94D2BD]/90 mt-1 font-medium leading-relaxed max-w-xl">
-              Últimas 7 publicações e momentos direto de{' '}
+              Últimas publicações e momentos direto de{' '}
               <a
                 href={SITE_INFO.instagramUrl}
                 target="_blank"
@@ -239,185 +363,57 @@ export const Gallery: React.FC = () => {
           </div>
         </div>
 
-        {/* Gallery Grid across full screen proportion (7 dynamic/structural slots + 1 community card) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {displayedSlots.map((slot) => {
-            const post = getPostForSlot(slot.id);
-            const isLiked = likedIds.has(`slot-${slot.id}`);
+        {/* Mobile View: 3 items per page with Pagination */}
+        <div className="block sm:hidden">
+          <div className="grid grid-cols-1 gap-5">
+            {mobileCards.map((card) => renderCard(card))}
+          </div>
 
-            if (post) {
-              const postLikes = (post.likes || 120) + (isLiked ? 1 : 0);
-              const galleryItem: GalleryItem = {
-                id: `slot-${slot.id}`,
-                type: post.type === 'video' ? 'video' : 'photo',
-                src: post.media_url,
-                thumbnail: post.thumbnail_url || post.media_url,
-                caption: post.caption || `Momento El Chicano Floripa (${slot.label})`,
-                category: post.category || (post.type === 'video' ? 'Vídeo Oficial' : 'Instagram'),
-                likes: postLikes,
-              };
-
-              return (
-                <div
-                  key={`slot-active-${slot.id}`}
-                  onClick={() => setActiveItem(galleryItem)}
-                  className="group relative bg-[#001219] border-4 border-[#001219] rounded-3xl overflow-hidden shadow-chicano hover:shadow-chicano-lg hover:-translate-y-2 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer flex flex-col justify-between will-change-transform"
-                >
-                  {/* Media Content */}
-                  <div className="relative aspect-[4/3] bg-black overflow-hidden">
-                    {post.type === 'video' ? (
-                      <video
-                        src={post.media_url}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        preload="metadata"
-                        className="w-full h-full object-cover group-hover:scale-108 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                      />
-                    ) : (
-                      <img
-                        src={post.media_url}
-                        alt={post.caption || slot.label}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-108 group-hover:brightness-105 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                      />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#001219] via-transparent to-transparent opacity-80 group-hover:opacity-50 transition-opacity duration-500 pointer-events-none" />
-
-                    {/* Video Badge / Play Icon */}
-                    {post.type === 'video' && (
-                      <div className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-[#EE9B00] text-[#001219] border-3 border-[#001219] shadow-md flex items-center justify-center group-hover:scale-115 group-hover:bg-[#CA6702] group-hover:text-white transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none">
-                        <Play className="w-6 h-6 ml-0.5 fill-current" />
-                      </div>
-                    )}
-
-                    {/* Top Slot Badge */}
-                    <div className="absolute top-3 left-3">
-                      <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-[#94D2BD] font-mono text-[9px] uppercase font-black tracking-wider border border-white/10 flex items-center gap-1.5">
-                        <InstagramIcon className="w-3 h-3 text-[#EE9B00]" />
-                        <span>{slot.id === 1 ? 'Vídeo Oficial' : slot.label}</span>
-                      </span>
-                    </div>
-
-                    {/* Hover Eye / Inspection indicator */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 -translate-y-1 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
-                      <span className="w-8 h-8 rounded-full bg-[#FAF5E8] text-[#001219] border-2 border-[#001219] flex items-center justify-center shadow-sm">
-                        <Eye className="w-4 h-4" />
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Bottom Caption & Link */}
-                  <div className="p-4 bg-[#001f2d] flex items-center justify-between gap-3 text-left">
-                    <p className="font-sans text-xs text-[#FAF5E8]/90 font-medium line-clamp-1 flex-1">
-                      {post.caption || `Momento El Chicano Floripa (${slot.label})`}
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={(e) => toggleLike(`slot-${slot.id}`, e)}
-                      className={`flex items-center gap-1.5 px-2 py-1 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer ${
-                        isLiked
-                          ? 'bg-[#AE2012] text-white border-[#AE2012]'
-                          : 'bg-white/5 text-[#E9D8A6]/70 border-white/10 hover:border-[#AE2012]/50 hover:text-white'
-                      }`}
-                    >
-                      <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current' : ''}`} />
-                      <span>{postLikes}</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            }
-
-            // Fallback: Empty Structural Placeholder Slot (Aguardando Administrador preencher no /admin)
-            return (
-              <a
-                key={`slot-empty-${slot.id}`}
-                href={SITE_INFO.instagramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group relative bg-[#001219] border-4 border-[#001219] rounded-3xl overflow-hidden shadow-chicano hover:shadow-chicano-lg hover:-translate-y-2 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col justify-between cursor-pointer will-change-transform"
+          {/* Mobile Pagination Controls */}
+          {totalMobilePages > 1 && (
+            <div className="flex items-center justify-center gap-4 mt-8 pt-4 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setMobilePage((p) => Math.max(0, p - 1))}
+                disabled={mobilePage === 0}
+                className="p-2.5 rounded-xl bg-black/40 border-2 border-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#EE9B00] hover:text-[#EE9B00] transition-all cursor-pointer"
+                aria-label="Página anterior"
               >
-                {/* Empty Structural Media Box */}
-                <div className="relative aspect-[4/3] bg-gradient-to-br from-[#001f2d] via-[#001824] to-[#001219] overflow-hidden flex flex-col items-center justify-center p-6 text-center">
-                  {/* Subtle Dashed Inner Border */}
-                  <div className="absolute inset-3 border-2 border-dashed border-[#94D2BD]/15 rounded-2xl pointer-events-none group-hover:border-[#EE9B00]/40 transition-colors duration-400" />
-                  <div className="absolute -top-10 -right-10 w-28 h-28 bg-[#94D2BD]/5 rounded-full blur-xl pointer-events-none group-hover:bg-[#EE9B00]/10 transition-colors" />
+                <ChevronLeft className="w-5 h-5" />
+              </button>
 
-                  {/* Top Slot Badge */}
-                  <div className="absolute top-3 left-3 z-10">
-                    <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-[#94D2BD] font-mono text-[9px] uppercase font-black tracking-wider border border-white/10 group-hover:text-[#EE9B00] transition-colors">
-                      {slot.label}
-                    </span>
-                  </div>
-
-                  {/* Top Right Live Badge */}
-                  <div className="absolute top-3 right-3 z-10">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-[#E9D8A6]/60 font-mono text-[8px] uppercase tracking-wider border border-white/5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#94D2BD]/60 animate-pulse" />
-                      Espaço Vazio
-                    </span>
-                  </div>
-
-                  {/* Center Instagram Icon */}
-                  <div className="w-14 h-14 rounded-2xl bg-[#002636] border-2 border-[#94D2BD]/30 text-[#94D2BD] flex items-center justify-center shadow-md group-hover:scale-110 group-hover:bg-[#EE9B00] group-hover:text-[#001219] group-hover:border-[#001219] transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]">
-                    <InstagramIcon className="w-7 h-7" />
-                  </div>
-
-                  <p className="font-mono text-[10px] text-[#94D2BD]/80 uppercase tracking-wider font-bold mt-3 group-hover:text-white transition-colors">
-                    Aguardando Mídia
-                  </p>
-                  <p className="font-sans text-[11px] text-[#FAF5E8]/40 mt-0.5">
-                    Slot reservado para o feed
-                  </p>
-                </div>
-
-                {/* Bottom Bar */}
-                <div className="p-4 bg-[#001f2d] flex items-center justify-between gap-3 text-left border-t border-white/5">
-                  <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#E9D8A6]/70 group-hover:text-[#EE9B00] transition-colors">
-                    <InstagramIcon className="w-3.5 h-3.5" />
-                    <span>@elchicanofloripa</span>
-                  </div>
-
-                  <div className="w-7 h-7 rounded-full bg-white/5 text-white/60 flex items-center justify-center group-hover:bg-[#EE9B00] group-hover:text-[#001219] transition-all">
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </div>
-                </div>
-              </a>
-            );
-          })}
-
-          {/* 8th Community Card (Present on 'all' or 'photo' to complete the grid) */}
-          {filter !== 'video' && (
-            <a
-              href={SITE_INFO.instagramUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group relative bg-[#FAF5E8] border-4 border-[#001219] rounded-3xl p-6 shadow-chicano hover:shadow-chicano-lg hover:-translate-y-2 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col justify-between text-left overflow-hidden cursor-pointer will-change-transform"
-            >
-              <div className="absolute inset-2 border border-dashed border-[#001219]/15 rounded-2xl pointer-events-none" />
-              <div className="absolute -top-8 -right-8 w-32 h-32 bg-[#EE9B00]/20 rounded-full blur-2xl pointer-events-none" />
-
-              <div className="relative z-10">
-                <span className="font-mono text-[9px] uppercase tracking-widest text-[#005F73] font-black px-2 py-0.5 rounded bg-[#005F73]/10 border border-[#005F73]/20 inline-block mb-3">
-                  Sua Foto Aqui
-                </span>
-                <h4 className="font-display font-black text-xl text-[#001219] uppercase leading-tight">
-                  VIVA LA EXPERIENCIA CHICANA!
-                </h4>
-                <p className="font-sans text-xs text-[#001219]/75 mt-2 leading-relaxed">
-                  Poste seus registros com a hashtag <strong className="text-[#CA6702]">#ElChicano</strong> e marque nosso perfil para aparecer na seleção da casa.
-                </p>
+              <div className="flex items-center gap-2">
+                {Array.from({ length: totalMobilePages }).map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setMobilePage(idx)}
+                    className={`transition-all cursor-pointer rounded-full ${
+                      mobilePage === idx
+                        ? 'w-7 h-2.5 bg-[#EE9B00]'
+                        : 'w-2.5 h-2.5 bg-white/20 hover:bg-white/50'
+                    }`}
+                    aria-label={`Ir para página ${idx + 1}`}
+                  />
+                ))}
               </div>
 
-              <div className="relative z-10 pt-4 border-t border-[#001219]/10 flex items-center justify-between font-mono text-xs font-black text-[#005F73] group-hover:text-[#CA6702] transition-colors">
-                <span>@elchicanofloripa</span>
-                <span className="text-base group-hover:translate-x-1 transition-transform duration-300">→</span>
-              </div>
-            </a>
+              <button
+                type="button"
+                onClick={() => setMobilePage((p) => Math.min(totalMobilePages - 1, p + 1))}
+                disabled={mobilePage >= totalMobilePages - 1}
+                className="p-2.5 rounded-xl bg-black/40 border-2 border-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#EE9B00] hover:text-[#EE9B00] transition-all cursor-pointer"
+                aria-label="Próxima página"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
           )}
+        </div>
+
+        {/* Desktop / Tablet View: Full 8-card responsive grid (Fixed Video + 7 Admin Slots) */}
+        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {displayedCards.map((card) => renderCard(card))}
         </div>
 
       </div>
