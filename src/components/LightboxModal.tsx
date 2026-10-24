@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { GalleryItem } from '../types';
 import { SITE_INFO } from '../data/constants';
-import { X, ChevronLeft, ChevronRight, Heart } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { InstagramIcon as Instagram } from './Icons';
 
 interface LightboxModalProps {
@@ -9,17 +9,15 @@ interface LightboxModalProps {
   items: GalleryItem[];
   onClose: () => void;
   onNavigate: (item: GalleryItem) => void;
-  onToggleLike: (id: string) => void;
-  likedIds: Set<string>;
+  onToggleLike?: (id: string) => void;
+  likedIds?: Set<string>;
 }
 
 export const LightboxModal: React.FC<LightboxModalProps> = ({
   item,
   items,
   onClose,
-  onNavigate,
-  onToggleLike,
-  likedIds
+  onNavigate
 }) => {
   useEffect(() => {
     if (!item) return;
@@ -45,7 +43,6 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
   if (!item) return null;
 
   const currentIndex = items.findIndex((i) => i.id === item.id);
-  const isLiked = likedIds.has(item.id);
 
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -121,38 +118,22 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
         {/* Caption & Actions Footer */}
         <div className="p-5 sm:p-6 bg-[#001f2d] border-t-2 border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex flex-col text-left">
-            <span className="font-mono text-[10px] text-[#94D2BD] uppercase tracking-widest font-bold">
-              Item {currentIndex + 1} de {items.length} • #{item.category}
-            </span>
-            <p className="font-sans text-sm text-[#FAF5E8] mt-1 font-medium max-w-xl">
+            <p className="font-sans text-sm sm:text-base text-[#FAF5E8] font-medium max-w-2xl leading-relaxed">
               {item.caption}
             </p>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            {/* Like Button */}
-            <button
-              type="button"
-              onClick={() => onToggleLike(item.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-mono text-xs font-bold transition-all cursor-pointer ${
-                isLiked
-                  ? 'bg-[#AE2012] border-[#AE2012] text-white'
-                  : 'bg-white/5 border-white/20 text-white hover:border-[#AE2012]'
-              }`}
-            >
-              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-              <span>{item.likes + (isLiked ? 1 : 0)}</span>
-            </button>
-
             {/* Instagram Link */}
             <a
               href={SITE_INFO.instagramUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2.5 rounded-xl bg-white/5 border-2 border-white/20 text-[#E9D8A6] hover:text-[#94D2BD] hover:border-[#94D2BD] transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-[#EE9B00] border-2 border-white/20 hover:border-[#001219] text-[#E9D8A6] hover:text-[#001219] transition-all font-mono text-xs font-bold"
               aria-label="Abrir no Instagram"
             >
               <Instagram className="w-4 h-4" />
+              <span>@elchicanofloripa</span>
             </a>
           </div>
         </div>
