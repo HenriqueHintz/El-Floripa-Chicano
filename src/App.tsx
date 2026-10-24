@@ -88,7 +88,7 @@ export function App() {
 
   // Route 3: Main Restaurant Landing Page
   return (
-    <div className="relative min-h-screen bg-[#001219] text-[#E9D8A6] selection:bg-[#EE9B00] selection:text-[#001219] overflow-x-hidden">
+    <div className="relative min-h-screen bg-[#001219] text-[#E9D8A6] selection:bg-[#EE9B00] selection:text-[#001219] overflow-x-clip">
       {/* Atmospheric Preloader */}
       {showPreloader && <Preloader onFinish={handlePreloaderFinish} />}
 
