@@ -82,19 +82,53 @@ export const Gallery: React.FC = () => {
     });
   };
 
-  const activeD1Posts = d1Posts.filter((p) => p.media_url && p.is_active !== 0);
-  const hasActivePosts = activeD1Posts.length > 0;
+  const FIXED_VIDEO_POST: D1GalleryPost = {
+    id: 'fixed-video-1',
+    slot_number: 1,
+    type: 'video',
+    media_url: '/videos/galeria/video-1.mp4',
+    thumbnail_url: '/videos/galeria/video-1.mp4',
+    permalink: SITE_INFO.instagramUrl,
+    caption: 'Momento El Chicano Floripa - Tex-Bra-Mex em Ação',
+    category: 'Vídeo Oficial',
+    likes: 248,
+    is_active: 1,
+  };
 
-  // Convert active D1 posts to GalleryItem for LightboxModal if clicked
-  const lightboxItems: GalleryItem[] = activeD1Posts.map((p) => ({
-    id: `d1-${p.id || p.slot_number}`,
+  const getPostForSlot = (slotId: number): D1GalleryPost | undefined => {
+    if (slotId === 1) {
+      return FIXED_VIDEO_POST;
+    }
+    return d1Posts.find(
+      (p) => Number(p.slot_number) === slotId && Boolean(p.media_url) && p.is_active !== 0
+    );
+  };
+
+  // Active posts including the permanently fixed video at Slot 1
+  const allActivePosts: D1GalleryPost[] = [
+    FIXED_VIDEO_POST,
+    ...d1Posts.filter(
+      (p) => Number(p.slot_number) !== 1 && Boolean(p.media_url) && p.is_active !== 0
+    ),
+  ];
+
+  // Convert active posts to GalleryItem for LightboxModal
+  const lightboxItems: GalleryItem[] = allActivePosts.map((p) => ({
+    id: `slot-${p.slot_number}`,
     type: p.type === 'video' ? 'video' : 'photo',
     src: p.media_url,
-    thumbnail: p.media_url,
+    thumbnail: p.thumbnail_url || p.media_url,
     caption: p.caption || `Momento El Chicano Floripa (Post #${p.slot_number})`,
-    category: 'Instagram',
-    likes: p.likes || 120,
+    category: p.category || (p.type === 'video' ? 'Vídeo Oficial' : 'Instagram'),
+    likes: (p.likes || 120) + (likedIds.has(`slot-${p.slot_number}`) ? 1 : 0),
   }));
+
+  const displayedSlots = EMPTY_INSTAGRAM_SLOTS.filter((slot) => {
+    if (filter === 'all') return true;
+    const post = getPostForSlot(slot.id);
+    if (post) return post.type === filter;
+    return filter === 'photo';
+  });
 
   return (
     <section
@@ -143,61 +177,60 @@ export const Gallery: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 self-start md:self-end w-full md:w-auto">
-            {hasActivePosts ? (
-              <div className="flex items-center gap-2 p-1 bg-black/40 border-2 border-white/10 rounded-2xl">
-                <button
-                  type="button"
-                  onClick={() => setFilter('all')}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer ${
-                    filter === 'all'
-                      ? 'bg-[#EE9B00] text-[#001219] shadow-sm font-black'
-                      : 'text-[#E9D8A6]/70 hover:text-white'
-                  }`}
-                >
-                  Tudo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilter('video')}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer ${
-                    filter === 'video'
-                      ? 'bg-[#EE9B00] text-[#001219] shadow-sm font-black'
-                      : 'text-[#E9D8A6]/70 hover:text-white'
-                  }`}
-                >
-                  Vídeos
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilter('photo')}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer ${
-                    filter === 'photo'
-                      ? 'bg-[#EE9B00] text-[#001219] shadow-sm font-black'
-                      : 'text-[#E9D8A6]/70 hover:text-white'
-                  }`}
-                >
-                  Fotos
-                </button>
-              </div>
-            ) : (
-              <a
-                href={SITE_INFO.instagramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-black/40 border-2 border-white/10 hover:border-[#EE9B00] rounded-2xl text-xs font-mono font-bold text-[#94D2BD] hover:text-[#EE9B00] transition-all cursor-pointer group shadow-chicano-sm"
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 self-start md:self-end w-full md:w-auto">
+            {/* Filter Toggle */}
+            <div className="flex items-center gap-1.5 p-1 bg-black/40 border-2 border-white/10 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer ${
+                  filter === 'all'
+                    ? 'bg-[#EE9B00] text-[#001219] shadow-sm font-black'
+                    : 'text-[#E9D8A6]/70 hover:text-white'
+                }`}
               >
-                <InstagramIcon className="w-3.5 h-3.5" />
-                <span>@elchicanofloripa</span>
-                <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-              </a>
-            )}
+                Tudo
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilter('video')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer ${
+                  filter === 'video'
+                    ? 'bg-[#EE9B00] text-[#001219] shadow-sm font-black'
+                    : 'text-[#E9D8A6]/70 hover:text-white'
+                }`}
+              >
+                Vídeos
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilter('photo')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer ${
+                  filter === 'photo'
+                    ? 'bg-[#EE9B00] text-[#001219] shadow-sm font-black'
+                    : 'text-[#E9D8A6]/70 hover:text-white'
+                }`}
+              >
+                Fotos
+              </button>
+            </div>
+
+            <a
+              href={SITE_INFO.instagramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-black/40 border-2 border-white/10 hover:border-[#EE9B00] rounded-2xl text-xs font-mono font-bold text-[#94D2BD] hover:text-[#EE9B00] transition-all cursor-pointer group shadow-chicano-sm shrink-0"
+            >
+              <InstagramIcon className="w-3.5 h-3.5" />
+              <span>@elchicanofloripa</span>
+              <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+            </a>
 
             <a
               href={SITE_INFO.cardapioWebUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="relative overflow-hidden group inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-[#001219] shadow-chicano hover:-translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="relative overflow-hidden group inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-[#001219] shadow-chicano hover:-translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
               <span className="absolute inset-0 -translate-x-full animate-cta-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
               <ShoppingBag className="w-3.5 h-3.5 relative z-10" />
@@ -208,21 +241,19 @@ export const Gallery: React.FC = () => {
 
         {/* Gallery Grid across full screen proportion (7 dynamic/structural slots + 1 community card) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {EMPTY_INSTAGRAM_SLOTS.map((slot) => {
-            const post = d1Posts.find(
-              (p) => Number(p.slot_number) === Number(slot.id) && Boolean(p.media_url) && p.is_active !== 0
-            );
+          {displayedSlots.map((slot) => {
+            const post = getPostForSlot(slot.id);
             const isLiked = likedIds.has(`slot-${slot.id}`);
 
             if (post) {
               const postLikes = (post.likes || 120) + (isLiked ? 1 : 0);
               const galleryItem: GalleryItem = {
-                id: `d1-${post.id || slot.id}`,
+                id: `slot-${slot.id}`,
                 type: post.type === 'video' ? 'video' : 'photo',
                 src: post.media_url,
-                thumbnail: post.media_url,
+                thumbnail: post.thumbnail_url || post.media_url,
                 caption: post.caption || `Momento El Chicano Floripa (${slot.label})`,
-                category: 'Instagram',
+                category: post.category || (post.type === 'video' ? 'Vídeo Oficial' : 'Instagram'),
                 likes: postLikes,
               };
 
@@ -241,6 +272,7 @@ export const Gallery: React.FC = () => {
                         loop
                         muted
                         playsInline
+                        preload="metadata"
                         className="w-full h-full object-cover group-hover:scale-108 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
                       />
                     ) : (
@@ -264,7 +296,7 @@ export const Gallery: React.FC = () => {
                     <div className="absolute top-3 left-3">
                       <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-[#94D2BD] font-mono text-[9px] uppercase font-black tracking-wider border border-white/10 flex items-center gap-1.5">
                         <InstagramIcon className="w-3 h-3 text-[#EE9B00]" />
-                        <span>{slot.label}</span>
+                        <span>{slot.id === 1 ? 'Vídeo Oficial' : slot.label}</span>
                       </span>
                     </div>
 
@@ -357,33 +389,35 @@ export const Gallery: React.FC = () => {
             );
           })}
 
-          {/* 8th Community Card (Always present to complete the 8-card grid) */}
-          <a
-            href={SITE_INFO.instagramUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group relative bg-[#FAF5E8] border-4 border-[#001219] rounded-3xl p-6 shadow-chicano hover:shadow-chicano-lg hover:-translate-y-2 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col justify-between text-left overflow-hidden cursor-pointer will-change-transform"
-          >
-            <div className="absolute inset-2 border border-dashed border-[#001219]/15 rounded-2xl pointer-events-none" />
-            <div className="absolute -top-8 -right-8 w-32 h-32 bg-[#EE9B00]/20 rounded-full blur-2xl pointer-events-none" />
+          {/* 8th Community Card (Present on 'all' or 'photo' to complete the grid) */}
+          {filter !== 'video' && (
+            <a
+              href={SITE_INFO.instagramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative bg-[#FAF5E8] border-4 border-[#001219] rounded-3xl p-6 shadow-chicano hover:shadow-chicano-lg hover:-translate-y-2 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col justify-between text-left overflow-hidden cursor-pointer will-change-transform"
+            >
+              <div className="absolute inset-2 border border-dashed border-[#001219]/15 rounded-2xl pointer-events-none" />
+              <div className="absolute -top-8 -right-8 w-32 h-32 bg-[#EE9B00]/20 rounded-full blur-2xl pointer-events-none" />
 
-            <div className="relative z-10">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-[#005F73] font-black px-2 py-0.5 rounded bg-[#005F73]/10 border border-[#005F73]/20 inline-block mb-3">
-                Sua Foto Aqui
-              </span>
-              <h4 className="font-display font-black text-xl text-[#001219] uppercase leading-tight">
-                VIVA LA EXPERIENCIA CHICANA!
-              </h4>
-              <p className="font-sans text-xs text-[#001219]/75 mt-2 leading-relaxed">
-                Poste seus registros com a hashtag <strong className="text-[#CA6702]">#ElChicano</strong> e marque nosso perfil para aparecer na seleção da casa.
-              </p>
-            </div>
+              <div className="relative z-10">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#005F73] font-black px-2 py-0.5 rounded bg-[#005F73]/10 border border-[#005F73]/20 inline-block mb-3">
+                  Sua Foto Aqui
+                </span>
+                <h4 className="font-display font-black text-xl text-[#001219] uppercase leading-tight">
+                  VIVA LA EXPERIENCIA CHICANA!
+                </h4>
+                <p className="font-sans text-xs text-[#001219]/75 mt-2 leading-relaxed">
+                  Poste seus registros com a hashtag <strong className="text-[#CA6702]">#ElChicano</strong> e marque nosso perfil para aparecer na seleção da casa.
+                </p>
+              </div>
 
-            <div className="relative z-10 pt-4 border-t border-[#001219]/10 flex items-center justify-between font-mono text-xs font-black text-[#005F73] group-hover:text-[#CA6702] transition-colors">
-              <span>@elchicanofloripa</span>
-              <span className="text-base group-hover:translate-x-1 transition-transform duration-300">→</span>
-            </div>
-          </a>
+              <div className="relative z-10 pt-4 border-t border-[#001219]/10 flex items-center justify-between font-mono text-xs font-black text-[#005F73] group-hover:text-[#CA6702] transition-colors">
+                <span>@elchicanofloripa</span>
+                <span className="text-base group-hover:translate-x-1 transition-transform duration-300">→</span>
+              </div>
+            </a>
+          )}
         </div>
 
       </div>
