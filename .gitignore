@@ -32,4 +32,6 @@ Thumbs.db
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+# Temporary & control tower
+.control-tower/
+scratch/

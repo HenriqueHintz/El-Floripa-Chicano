@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Logo } from './Logo';
 import { NAV_LINKS, SITE_INFO } from '../data/constants';
-import { MessageCircle, Menu, X, ArrowUpRight, Flame } from 'lucide-react';
+import { MessageCircle, Menu, X, ArrowUpRight, Music } from 'lucide-react';
 import { smoothScrollToTarget } from '../utils/scroll';
 import { ambientAudio } from '../utils/ambientAudio';
 
@@ -94,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
 
           {/* Desktop Controls (Sound Toggle & Contact CTA) */}
           <div className="hidden md:flex items-center gap-2.5">
-            {/* Ambient Sound Toggle Button */}
+            {/* Mexican Music Toggle Button */}
             <button
               type="button"
               onClick={toggleAudio}
@@ -103,10 +103,10 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
                   ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-chicano-sm scale-102'
                   : 'bg-white/10 text-[#E9D8A6] border-white/15 hover:border-[#EE9B00] hover:text-white'
               }`}
-              title={isAudioActive ? 'Desativar som da brasa' : 'Ativar som ambiente da brasa'}
+              title={isAudioActive ? 'Pausar música mexicana' : 'Tocar música mexicana'}
             >
-              <Flame className={`w-3.5 h-3.5 ${isAudioActive ? 'fill-current animate-flame-flicker text-[#AE2012]' : 'text-[#EE9B00]'}`} />
-              <span className="hidden lg:inline">{isAudioActive ? 'Brasa Ativa' : 'Som Ambiente'}</span>
+              <Music className={`w-3.5 h-3.5 ${isAudioActive ? 'animate-bounce text-[#AE2012]' : 'text-[#EE9B00]'}`} />
+              <span className="hidden lg:inline">{isAudioActive ? 'Música Ativa' : 'Música Mexicana'}</span>
             </button>
 
             {/* Contact CTA */}
@@ -166,7 +166,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
               </a>
             ))}
 
-            {/* Mobile Sound Toggle */}
+            {/* Mobile Music Toggle */}
             <button
               type="button"
               onClick={toggleAudio}
@@ -176,8 +176,8 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
                   : 'bg-white/10 text-white border-white/15'
               }`}
             >
-              <Flame className="w-4 h-4 fill-current text-[#CA6702]" />
-              <span>{isAudioActive ? 'Brasa Acesa (Som Ativo)' : 'Ativar Som Ambiente da Brasa'}</span>
+              <Music className={`w-4 h-4 ${isAudioActive ? 'text-[#AE2012]' : 'text-[#CA6702]'}`} />
+              <span>{isAudioActive ? 'Música Mexicana (Tocando)' : 'Tocar Música Mexicana'}</span>
             </button>
           </div>
 
