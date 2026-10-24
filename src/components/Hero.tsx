@@ -146,8 +146,8 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* 6. Botões de Ação: Canto inferior no mobile (mt-auto pb-4), posição original no desktop (sm:mt-10 sm:pb-0) */}
-          <div className="flex flex-row flex-wrap items-center gap-2.5 sm:gap-4 mt-auto sm:mt-10 pb-4 sm:pb-0 w-auto animate-hero-fade-4">
+          {/* 6. Botões de Ação: Centralizados e acima da pimenta no mobile (justify-center pb-32), posição original no desktop (sm:justify-start sm:mt-10 sm:pb-0) */}
+          <div className="flex flex-row flex-wrap items-center justify-center sm:justify-start gap-2.5 sm:gap-4 mt-auto sm:mt-10 pb-32 sm:pb-0 w-full sm:w-auto self-center sm:self-start animate-hero-fade-4">
             <a
               href={SITE_INFO.cardapioWebUrl}
               target="_blank"
