@@ -137,8 +137,8 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
               </span>
             </h1>
 
-            {/* Subtítulo: Apresentação Limpa com Quebra no Mobile */}
-            <div className="mt-5 sm:mt-8 flex items-center gap-3 sm:gap-4 animate-hero-fade-3">
+            {/* Subtítulo: Apresentação Limpa com Quebra no Mobile e Posicionado Mais Abaixo */}
+            <div className="mt-12 sm:mt-8 flex items-center gap-3 sm:gap-4 animate-hero-fade-3">
               <div className="w-1.5 h-10 sm:h-12 rounded-full bg-gradient-to-b from-[#FF4D00] to-[#E63946] shadow-[0_0_15px_rgba(230,57,70,0.8)] shrink-0" />
               <p className="font-sans text-base sm:text-2xl md:text-3xl text-[#FAF5E8] font-medium leading-snug sm:leading-relaxed drop-shadow-[0_3px_12px_rgba(0,0,0,0.95)]">
                 Comida mexicana <br className="sm:hidden" />com alma brasileira.
