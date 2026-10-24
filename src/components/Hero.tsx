@@ -42,7 +42,7 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="relative min-h-[100dvh] flex flex-col justify-between bg-[#001219] pt-24 sm:pt-28 pb-4 sm:pb-8 overflow-hidden selection:bg-[#EE9B00] selection:text-[#001219]"
+      className="relative min-h-[100dvh] flex flex-col justify-between sm:justify-center items-stretch sm:items-center bg-[#001219] pt-24 sm:pt-32 pb-4 sm:pb-24 overflow-hidden selection:bg-[#EE9B00] selection:text-[#001219]"
     >
       {/* 1. Imagem de Fundo 100% Colorida, Autêntica e com Movimento Suave Ken Burns */}
       <div
@@ -70,9 +70,9 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
       <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-[#001219] via-black/60 to-transparent pointer-events-none z-[2]" />
 
       {/* 5. Conteúdo Principal Cinematográfico Aberto */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full flex-1 flex flex-col justify-between">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full flex-1 sm:flex-initial flex flex-col justify-between sm:justify-center sm:my-auto">
         <div
-          className="flex flex-col items-start text-left max-w-3xl will-change-transform my-auto pt-6 sm:pt-10"
+          className="flex-1 sm:flex-initial flex flex-col items-start text-left max-w-3xl will-change-transform justify-between sm:justify-start"
           style={{
             transform: isHovered
               ? `perspective(1000px) rotateX(${tilt.x * 0.3}deg) rotateY(${tilt.y * 0.3}deg) translateZ(8px)`
@@ -80,91 +80,94 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
             transition: isHovered ? 'transform 0.15s ease-out' : 'transform 0.6s ease-out',
           }}
         >
-          {/* Badges de Autenticidade */}
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <span className="font-warmth text-2xl sm:text-3xl text-[#EE9B00] -rotate-3 block select-none animate-hero-stamp drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-              Autêntico!
-            </span>
-
-            <div className="inline-flex items-center gap-1.5 animate-badge-glow rounded-full">
-              <span className="font-mono text-xs sm:text-sm font-black uppercase tracking-[0.25em] text-[#001219] bg-[#EE9B00] border-2 border-[#FAF5E8] rounded-full px-4 py-1.5 shadow-[0_0_20px_rgba(238,155,0,0.5)] select-none">
-                TEX·BRA·MEX
+          {/* Bloco de Textos e Badges */}
+          <div className="flex flex-col items-start my-auto sm:my-0">
+            {/* Badges de Autenticidade */}
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <span className="font-warmth text-2xl sm:text-3xl text-[#EE9B00] -rotate-3 block select-none animate-hero-stamp drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                Autêntico!
               </span>
-              <sup className="font-mono text-[10px] font-black text-[#EE9B00] select-none">
-                ®
-              </sup>
+
+              <div className="inline-flex items-center gap-1.5 animate-badge-glow rounded-full">
+                <span className="font-mono text-xs sm:text-sm font-black uppercase tracking-[0.25em] text-[#001219] bg-[#EE9B00] border-2 border-[#FAF5E8] rounded-full px-4 py-1.5 shadow-[0_0_20px_rgba(238,155,0,0.5)] select-none">
+                  TEX·BRA·MEX
+                </span>
+                <sup className="font-mono text-[10px] font-black text-[#EE9B00] select-none">
+                  ®
+                </sup>
+              </div>
+            </div>
+
+            {/* Título Monumental: Feito com Fé, Fogo e Coração */}
+            <h1 className="font-display font-black text-4xl sm:text-6xl md:text-7xl lg:text-8xl text-white uppercase leading-[0.92] tracking-tight">
+              <span className="block drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)] animate-hero-fade-1">
+                FEITO COM{' '}
+                <span
+                  className="bg-gradient-to-r from-[#FF4D00] via-[#E63946] to-[#D62828] bg-clip-text text-transparent filter drop-shadow-[0_0_35px_rgba(230,57,70,0.65)]"
+                  style={{
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
+                  FÉ
+                </span>
+                ,
+              </span>
+              <span className="block drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)] animate-hero-fade-2">
+                <span
+                  className="bg-gradient-to-r from-[#FF4D00] via-[#E63946] to-[#D62828] bg-clip-text text-transparent filter drop-shadow-[0_0_35px_rgba(230,57,70,0.65)]"
+                  style={{
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
+                  FOGO
+                </span>{' '}
+                E{' '}
+                <span
+                  className="bg-gradient-to-r from-[#FF4D00] via-[#E63946] to-[#D62828] bg-clip-text text-transparent filter drop-shadow-[0_0_35px_rgba(230,57,70,0.65)]"
+                  style={{
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
+                  CORAÇÃO
+                </span>
+                .
+              </span>
+            </h1>
+
+            {/* Subtítulo: Apresentação Limpa com Quebra no Mobile */}
+            <div className="mt-5 sm:mt-8 flex items-center gap-3 sm:gap-4 animate-hero-fade-3">
+              <div className="w-1.5 h-10 sm:h-12 rounded-full bg-gradient-to-b from-[#FF4D00] to-[#E63946] shadow-[0_0_15px_rgba(230,57,70,0.8)] shrink-0" />
+              <p className="font-sans text-base sm:text-2xl md:text-3xl text-[#FAF5E8] font-medium leading-snug sm:leading-relaxed drop-shadow-[0_3px_12px_rgba(0,0,0,0.95)]">
+                Comida mexicana <br className="sm:hidden" />com alma brasileira.
+              </p>
             </div>
           </div>
 
-          {/* Título Monumental: Feito com Fé, Fogo e Coração */}
-          <h1 className="font-display font-black text-4xl sm:text-6xl md:text-7xl lg:text-8xl text-white uppercase leading-[0.92] tracking-tight">
-            <span className="block drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)] animate-hero-fade-1">
-              FEITO COM{' '}
-              <span
-                className="bg-gradient-to-r from-[#FF4D00] via-[#E63946] to-[#D62828] bg-clip-text text-transparent filter drop-shadow-[0_0_35px_rgba(230,57,70,0.65)]"
-                style={{
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}
-              >
-                FÉ
-              </span>
-              ,
-            </span>
-            <span className="block drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)] animate-hero-fade-2">
-              <span
-                className="bg-gradient-to-r from-[#FF4D00] via-[#E63946] to-[#D62828] bg-clip-text text-transparent filter drop-shadow-[0_0_35px_rgba(230,57,70,0.65)]"
-                style={{
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}
-              >
-                FOGO
-              </span>{' '}
-              E{' '}
-              <span
-                className="bg-gradient-to-r from-[#FF4D00] via-[#E63946] to-[#D62828] bg-clip-text text-transparent filter drop-shadow-[0_0_35px_rgba(230,57,70,0.65)]"
-                style={{
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}
-              >
-                CORAÇÃO
-              </span>
-              .
-            </span>
-          </h1>
+          {/* 6. Botões de Ação: Canto inferior no mobile (mt-auto pb-4), posição original no desktop (sm:mt-10 sm:pb-0) */}
+          <div className="flex flex-row flex-wrap items-center gap-2.5 sm:gap-4 mt-auto sm:mt-10 pb-4 sm:pb-0 w-auto animate-hero-fade-4">
+            <a
+              href={SITE_INFO.cardapioWebUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative overflow-hidden inline-flex items-center justify-center gap-1.5 sm:gap-3 px-4 sm:px-9 py-2 sm:py-4 bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl sm:rounded-2xl border-2 border-[#001219] shadow-[0_0_20px_rgba(238,155,0,0.4),3px_3px_0px_0px_#001219] sm:shadow-[0_0_25px_rgba(238,155,0,0.4),4px_4px_0px_0px_#001219] hover:shadow-[0_0_30px_rgba(238,155,0,0.7),5px_5px_0px_0px_#001219] sm:hover:shadow-[0_0_35px_rgba(238,155,0,0.7),7px_7px_0px_0px_#001219] hover:-translate-x-[2px] hover:-translate-y-[2px] active:translate-x-[1px] active:translate-y-[1px] sm:active:translate-x-[2px] sm:active:translate-y-[2px] transition-all duration-200 cursor-pointer text-center group"
+            >
+              <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none animate-cta-shimmer" />
+              <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6" />
+              <span>PEÇA AGORA</span>
+            </a>
 
-          {/* Subtítulo: Apresentação Limpa com Quebra no Mobile */}
-          <div className="mt-5 sm:mt-8 flex items-center gap-3 sm:gap-4 animate-hero-fade-3">
-            <div className="w-1.5 h-10 sm:h-12 rounded-full bg-gradient-to-b from-[#FF4D00] to-[#E63946] shadow-[0_0_15px_rgba(230,57,70,0.8)] shrink-0" />
-            <p className="font-sans text-base sm:text-2xl md:text-3xl text-[#FAF5E8] font-medium leading-snug sm:leading-relaxed drop-shadow-[0_3px_12px_rgba(0,0,0,0.95)]">
-              Comida mexicana <br className="sm:hidden" />com alma brasileira.
-            </p>
+            <button
+              type="button"
+              onClick={handleScrollToAbout}
+              className="inline-flex items-center justify-center gap-1.5 sm:gap-3 px-4 sm:px-8 py-2 sm:py-4 bg-black/60 hover:bg-[#FAF5E8] text-[#E9D8A6] hover:text-[#001219] font-display font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl sm:rounded-2xl border-2 border-white/20 hover:border-[#001219] backdrop-blur-md shadow-[3px_3px_0px_0px_rgba(0,0,0,0.5)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] hover:shadow-[5px_5px_0px_0px_#001219] sm:hover:shadow-[7px_7px_0px_0px_#001219] hover:-translate-x-[2px] hover:-translate-y-[2px] active:translate-x-[1px] active:translate-y-[1px] sm:active:translate-x-[2px] sm:active:translate-y-[2px] transition-all duration-200 cursor-pointer group"
+            >
+              <span>Nossa História</span>
+              <ArrowDown className="w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-200 group-hover:translate-y-1 text-[#EE9B00] group-hover:text-[#001219]" />
+            </button>
           </div>
-        </div>
-
-        {/* 6. Botões de Ação no Canto Mais Inferior da Seção Hero */}
-        <div className="flex flex-row flex-wrap items-center gap-2.5 sm:gap-4 mt-auto pt-6 sm:pt-8 pb-4 sm:pb-6 w-auto animate-hero-fade-4">
-          <a
-            href={SITE_INFO.cardapioWebUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="relative overflow-hidden inline-flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-8 py-2 sm:py-3.5 bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl sm:rounded-2xl border-2 border-[#001219] shadow-[0_0_20px_rgba(238,155,0,0.4),3px_3px_0px_0px_#001219] hover:shadow-[0_0_30px_rgba(238,155,0,0.7),5px_5px_0px_0px_#001219] hover:-translate-x-[2px] hover:-translate-y-[2px] active:translate-x-[1px] active:translate-y-[1px] transition-all duration-200 cursor-pointer text-center group"
-          >
-            <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none animate-cta-shimmer" />
-            <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6" />
-            <span>PEÇA AGORA</span>
-          </a>
-
-          <button
-            type="button"
-            onClick={handleScrollToAbout}
-            className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-7 py-2 sm:py-3.5 bg-black/60 hover:bg-[#FAF5E8] text-[#E9D8A6] hover:text-[#001219] font-display font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl sm:rounded-2xl border-2 border-white/20 hover:border-[#001219] backdrop-blur-md shadow-[3px_3px_0px_0px_rgba(0,0,0,0.5)] hover:shadow-[5px_5px_0px_0px_#001219] hover:-translate-x-[2px] hover:-translate-y-[2px] active:translate-x-[1px] active:translate-y-[1px] transition-all duration-200 cursor-pointer group"
-          >
-            <span>Nossa História</span>
-            <ArrowDown className="w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-200 group-hover:translate-y-1 text-[#EE9B00] group-hover:text-[#001219]" />
-          </button>
         </div>
       </div>
 
