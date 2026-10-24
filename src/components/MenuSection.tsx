@@ -12,7 +12,23 @@ export const MenuSection: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
-  const itemsPerPage = 6;
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 640;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Máximo de 4 cards por página no mobile e 6 no desktop
+  const itemsPerPage = isMobile ? 4 : 6;
   const [currentPage, setCurrentPage] = useState<number>(1);
   const categoryTrackRef = useRef<HTMLDivElement>(null);
 
@@ -44,10 +60,10 @@ export const MenuSection: React.FC = () => {
     categoryTrackRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
   };
 
-  // Reset page when category or search changes
+  // Reset page when category, search or device mode changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, searchQuery, isMobile]);
 
   // Search & Category Filter
   const filteredProducts = useMemo(() => {
@@ -89,6 +105,13 @@ export const MenuSection: React.FC = () => {
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const paginatedProducts = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredProducts.slice(start, start + itemsPerPage);
@@ -111,7 +134,8 @@ export const MenuSection: React.FC = () => {
   // Generate page numbers array with ellipses
   const pageNumbers = useMemo(() => {
     const pages: (number | string)[] = [];
-    if (totalPages <= 7) {
+    const maxSimple = isMobile ? 5 : 7;
+    if (totalPages <= maxSimple) {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
       pages.push(1);
@@ -125,7 +149,7 @@ export const MenuSection: React.FC = () => {
       pages.push(totalPages);
     }
     return pages;
-  }, [totalPages, currentPage]);
+  }, [totalPages, currentPage, isMobile]);
 
   return (
     <section
@@ -406,29 +430,29 @@ export const MenuSection: React.FC = () => {
               })}
             </div>
 
-            {/* Pagination Controls */}
+            {/* Pagination Controls - Otimizado para Mobile e Desktop */}
             {totalPages > 1 && (
-              <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <div className="mt-8 sm:mt-12 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                 <button
                   type="button"
                   disabled={currentPage === 1}
                   onClick={() => handlePageChange(currentPage - 1)}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border-2 font-mono text-xs font-bold uppercase transition-all ${
+                  className={`inline-flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border-2 font-mono text-xs font-bold uppercase transition-all ${
                     currentPage === 1
-                      ? 'opacity-40 border-white/10 text-white/40 cursor-not-allowed bg-transparent'
+                      ? 'opacity-30 border-white/10 text-white/40 cursor-not-allowed bg-transparent'
                       : 'bg-[#FAF5E8] text-[#001219] border-[#001219] shadow-chicano-sm hover:-translate-x-0.5 cursor-pointer hover:bg-[#EE9B00]'
                   }`}
                   aria-label="Página anterior"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  <span>Anterior</span>
+                  <span className="hidden xs:inline">Anterior</span>
                 </button>
 
-                <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-center">
                   {pageNumbers.map((page, idx) => {
                     if (page === '...') {
                       return (
-                        <span key={`dots-${idx}`} className="px-2 text-white/40 font-mono">
+                        <span key={`dots-${idx}`} className="px-1 text-white/40 font-mono text-xs">
                           ...
                         </span>
                       );
@@ -441,9 +465,9 @@ export const MenuSection: React.FC = () => {
                         key={numPage}
                         type="button"
                         onClick={() => handlePageChange(numPage)}
-                        className={`w-10 h-10 rounded-xl font-mono text-xs font-bold border-2 transition-all cursor-pointer flex items-center justify-center ${
+                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl font-mono text-xs font-bold border-2 transition-all cursor-pointer flex items-center justify-center ${
                           isActive
-                            ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-chicano-sm scale-110 font-black'
+                            ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-chicano-sm scale-105 sm:scale-110 font-black'
                             : 'bg-white/5 text-[#E9D8A6] border-white/15 hover:border-[#EE9B00] hover:text-white'
                         }`}
                       >
@@ -457,14 +481,14 @@ export const MenuSection: React.FC = () => {
                   type="button"
                   disabled={currentPage === totalPages}
                   onClick={() => handlePageChange(currentPage + 1)}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border-2 font-mono text-xs font-bold uppercase transition-all ${
+                  className={`inline-flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border-2 font-mono text-xs font-bold uppercase transition-all ${
                     currentPage === totalPages
-                      ? 'opacity-40 border-white/10 text-white/40 cursor-not-allowed bg-transparent'
+                      ? 'opacity-30 border-white/10 text-white/40 cursor-not-allowed bg-transparent'
                       : 'bg-[#FAF5E8] text-[#001219] border-[#001219] shadow-chicano-sm hover:translate-x-0.5 cursor-pointer hover:bg-[#EE9B00]'
                   }`}
                   aria-label="Próxima página"
                 >
-                  <span>Próxima</span>
+                  <span className="hidden xs:inline">Próxima</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
