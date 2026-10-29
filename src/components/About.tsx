@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SITE_INFO } from '../data/constants';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Chapter {
   id: string;
@@ -37,8 +37,27 @@ const CHAPTERS: Chapter[] = [
 export const About: React.FC = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 1024;
+    }
+    return false;
+  });
+  const [userInteracted, setUserInteracted] = useState(false);
+  const touchStartXRef = useRef<number | null>(null);
 
+  // Monitor resize for mobile/desktop breakpoint (1024px)
   useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Desktop sticky scroll calculation (only active on desktop >= 1024px)
+  useEffect(() => {
+    if (isMobile) return;
     let rafId = 0;
 
     const handleScroll = () => {
@@ -78,22 +97,68 @@ export const About: React.FC = () => {
       window.removeEventListener('resize', onScroll);
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [isMobile]);
+
+  // Mobile autoplay: smoothly transitions every 4.5s unless user has touched controls
+  useEffect(() => {
+    if (!isMobile || userInteracted) return;
+    const interval = setInterval(() => {
+      setActiveIdx((prev) => (prev + 1) % CHAPTERS.length);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [isMobile, userInteracted]);
+
+  // Touch Swipe handlers for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setUserInteracted(true);
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diffX = touchStartXRef.current - touchEndX;
+
+    if (Math.abs(diffX) > 40) {
+      if (diffX > 0) {
+        // Swipe left -> next
+        setActiveIdx((prev) => (prev + 1) % CHAPTERS.length);
+      } else {
+        // Swipe right -> prev
+        setActiveIdx((prev) => (prev - 1 + CHAPTERS.length) % CHAPTERS.length);
+      }
+    }
+    touchStartXRef.current = null;
+  };
+
+  const goToPrev = () => {
+    setUserInteracted(true);
+    setActiveIdx((prev) => (prev - 1 + CHAPTERS.length) % CHAPTERS.length);
+  };
+
+  const goToNext = () => {
+    setUserInteracted(true);
+    setActiveIdx((prev) => (prev + 1) % CHAPTERS.length);
+  };
+
+  const selectChapter = (idx: number) => {
+    setUserInteracted(true);
+    setActiveIdx(idx);
+  };
 
   return (
     <section
       id="about-section"
       ref={sectionRef}
-      className="relative bg-[#001219]"
-      style={{ height: '300vh' }}
+      className="relative bg-[#001219] lg:h-[300vh]"
       aria-label="Nossa História"
     >
-      {/* Palco Fixo Sticky que acompanha o rolamento vertical */}
-      <div className="sticky top-0 h-screen w-full overflow-hidden flex items-center justify-center">
+      {/* Container: No mobile é relativo em fluxo contínuo; no desktop é sticky h-screen */}
+      <div className="relative lg:sticky top-0 min-h-screen lg:h-screen w-full overflow-hidden flex items-center justify-center py-16 sm:py-20 lg:py-0">
         
         {/* Glow atmosférico suave */}
-        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-[#EE9B00]/10 blur-[140px] pointer-events-none" />
-        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-[#005F73]/20 blur-[140px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[350px] sm:w-[500px] h-[350px] sm:h-[500px] rounded-full bg-[#EE9B00]/10 blur-[120px] sm:blur-[140px] pointer-events-none" />
+        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-[350px] sm:w-[500px] h-[350px] sm:h-[500px] rounded-full bg-[#005F73]/20 blur-[120px] sm:blur-[140px] pointer-events-none" />
 
         {/* Textura Rupestre de fundo */}
         <div
@@ -101,25 +166,76 @@ export const About: React.FC = () => {
           style={{ backgroundImage: "url('/images/sections/texture-rupestre.webp')" }}
         />
 
-        {/* Conteúdo Limpo em 2 Colunas com Mais Ênfase na Imagem */}
+        {/* Conteúdo Responsivo */}
         <div className="max-w-7xl mx-auto px-4 sm:px-8 w-full relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-14 items-center">
 
-            {/* Coluna Esquerda: Título + Texto Mudando Embaixo + CTA */}
-            <div className="lg:col-span-5 flex flex-col gap-6 text-left">
+            {/* Coluna Esquerda / Principal no Mobile */}
+            <div className="lg:col-span-5 flex flex-col gap-5 sm:gap-6 text-left">
               
-              {/* Título Principal Limpo */}
-              <h2 className="font-display font-black text-4xl sm:text-5xl md:text-6xl text-white uppercase leading-[0.95] tracking-tight">
+              {/* Título Principal */}
+              <h2 className="font-display font-black text-3xl sm:text-5xl md:text-6xl text-white uppercase leading-[0.95] tracking-tight">
                 DA ESTRADA <br />
                 <span className="text-[#EE9B00]">PARA A MESA</span>
               </h2>
 
-              {/* Texto Dinâmico que muda com o rolamento vertical */}
+              {/* FOTO EXCLUSIVA PARA MOBILE: Exibida entre o título e o texto, com touch swipe e setas */}
+              <div className="block lg:hidden w-full my-1">
+                <div
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={handleTouchEnd}
+                  className="relative w-full max-w-[340px] sm:max-w-[380px] aspect-[4/3] rounded-2xl p-1.5 bg-white/10 backdrop-blur-md border border-white/20 shadow-chicano mx-auto overflow-hidden select-none"
+                >
+                  <div className="relative w-full h-full rounded-xl overflow-hidden bg-[#001219]">
+                    {CHAPTERS.map((ch, idx) => (
+                      <img
+                        key={`mob-${ch.id}`}
+                        src={ch.image}
+                        alt={ch.alt}
+                        loading={idx === 0 ? 'eager' : 'lazy'}
+                        className={`absolute inset-0 w-full h-full object-cover object-center transition-all duration-500 ease-out ${
+                          idx === activeIdx
+                            ? 'opacity-100 scale-100 z-10'
+                            : 'opacity-0 scale-105 z-0 pointer-events-none'
+                        }`}
+                      />
+                    ))}
+
+                    {/* Vinheta na base */}
+                    <div className="absolute inset-0 pointer-events-none z-20 bg-gradient-to-t from-[#001219]/60 via-transparent to-transparent" />
+
+                    {/* Botões de Navegação Touch Anterior / Próximo */}
+                    <button
+                      type="button"
+                      onClick={goToPrev}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/25 text-white flex items-center justify-center z-30 hover:bg-[#EE9B00] hover:text-[#001219] active:scale-95 transition-all cursor-pointer"
+                      aria-label="Foto anterior"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={goToNext}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/25 text-white flex items-center justify-center z-30 hover:bg-[#EE9B00] hover:text-[#001219] active:scale-95 transition-all cursor-pointer"
+                      aria-label="Próxima foto"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+
+                    {/* Badge do Capítulo */}
+                    <div className="absolute bottom-2.5 right-3 px-2 py-0.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-[#EE9B00] font-mono text-[10px] font-black z-30">
+                      0{activeIdx + 1} / 03
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Texto Dinâmico que muda com o capítulo ativo */}
               <div className="relative min-h-[90px] sm:min-h-[110px] flex items-center">
                 {CHAPTERS.map((ch, idx) => (
                   <p
                     key={ch.id}
-                    className={`absolute inset-0 font-sans text-base sm:text-lg md:text-xl font-medium leading-relaxed text-white/90 transition-all duration-500 ease-out ${
+                    className={`absolute inset-0 font-sans text-sm sm:text-lg md:text-xl font-medium leading-relaxed text-white/90 transition-all duration-500 ease-out ${
                       idx === activeIdx
                         ? 'opacity-100 translate-y-0 pointer-events-auto'
                         : 'opacity-0 translate-y-4 pointer-events-none'
@@ -143,15 +259,20 @@ export const About: React.FC = () => {
                 ))}
               </div>
 
-              {/* Indicador sutil de 3 etapas + Botão de Pedido */}
-              <div className="flex items-center gap-6 pt-2">
-                <div className="flex gap-2">
+              {/* Indicador de 3 etapas interativo + Botão de Pedido */}
+              <div className="flex flex-wrap items-center justify-between sm:justify-start gap-4 sm:gap-6 pt-2">
+                <div className="flex items-center gap-2">
                   {CHAPTERS.map((ch, idx) => (
-                    <div
+                    <button
                       key={`dot-${ch.id}`}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                        idx === activeIdx ? 'w-8 bg-[#EE9B00]' : 'w-2 bg-white/25'
+                      type="button"
+                      onClick={() => selectChapter(idx)}
+                      className={`h-2.5 sm:h-2 rounded-full transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00] ${
+                        idx === activeIdx
+                          ? 'w-8 sm:w-8 bg-[#EE9B00]'
+                          : 'w-2.5 sm:w-2 bg-white/25 hover:bg-white/50'
                       }`}
+                      aria-label={`Ir para capítulo 0${idx + 1}`}
                     />
                   ))}
                 </div>
@@ -160,7 +281,7 @@ export const About: React.FC = () => {
                   href={SITE_INFO.cardapioWebUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="relative overflow-hidden group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl border-2 border-[#001219] shadow-chicano hover:-translate-x-[2px] hover:-translate-y-[2px] active:translate-x-[1px] active:translate-y-[1px] transition-all cursor-pointer"
+                  className="relative overflow-hidden group inline-flex items-center justify-center gap-2 sm:gap-2.5 px-6 sm:px-7 py-3 sm:py-3.5 bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl border-2 border-[#001219] shadow-chicano hover:-translate-x-[2px] hover:-translate-y-[2px] active:translate-x-[1px] active:translate-y-[1px] transition-all cursor-pointer"
                 >
                   <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none animate-cta-shimmer" />
                   <span>FAZER MEU PEDIDO</span>
@@ -170,10 +291,10 @@ export const About: React.FC = () => {
 
             </div>
 
-            {/* Coluna Direita: Fotos em Grande Destaque com Borda Fina e Translúcida */}
-            <div className="lg:col-span-7 flex justify-center items-center">
+            {/* Coluna Direita (Exclusiva para Desktop lg:): Foto Gigante Cinematográfica */}
+            <div className="hidden lg:flex lg:col-span-7 justify-center items-center">
               <div
-                className="relative w-full max-w-[360px] sm:max-w-[440px] md:max-w-[490px] lg:max-w-[530px] aspect-[4/5] rounded-[2rem] p-1.5 sm:p-2 bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85),0_0_30px_rgba(238,155,0,0.15)] transition-transform duration-500 ease-out"
+                className="relative w-full max-w-[530px] aspect-[4/5] rounded-[2rem] p-2 bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85),0_0_30px_rgba(238,155,0,0.15)] transition-transform duration-500 ease-out"
                 style={{ transform: 'rotate(-1deg)' }}
               >
                 {/* Glow suave ao redor da moldura */}
@@ -182,7 +303,7 @@ export const About: React.FC = () => {
                 <div className="relative w-full h-full rounded-[1.6rem] overflow-hidden bg-[#001219]">
                   {CHAPTERS.map((ch, idx) => (
                     <img
-                      key={ch.id}
+                      key={`desk-${ch.id}`}
                       src={ch.image}
                       alt={ch.alt}
                       loading={idx === 0 ? 'eager' : 'lazy'}
@@ -194,7 +315,7 @@ export const About: React.FC = () => {
                     />
                   ))}
 
-                  {/* Vinheta bem sutil apenas na base */}
+                  {/* Vinheta suave na base */}
                   <div className="absolute inset-0 pointer-events-none z-20 bg-gradient-to-t from-[#001219]/45 via-transparent to-transparent" />
                 </div>
               </div>
