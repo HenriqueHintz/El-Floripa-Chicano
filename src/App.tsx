@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { About } from './components/About';
@@ -10,10 +10,28 @@ import { Franchise } from './components/Franchise';
 import { Contact } from './components/Contact';
 import { Footer } from './components/Footer';
 import { FloatingActions } from './components/FloatingActions';
-import { FranchisePage } from './components/FranchisePage';
-import { AdminDashboard } from './components/AdminDashboard';
 import { Preloader } from './components/Preloader';
 import { smoothScrollToTarget } from './utils/scroll';
+
+const FranchisePage = lazy(() =>
+  import('./components/FranchisePage').then((m) => ({ default: m.FranchisePage }))
+);
+const AdminDashboard = lazy(() =>
+  import('./components/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
+);
+
+function RouteLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-[#001219] flex items-center justify-center p-4">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-[#EE9B00]/30 border-t-[#EE9B00] rounded-full animate-spin" />
+        <span className="text-sm font-sans tracking-widest uppercase text-[#94D2BD]/80">
+          Carregando...
+        </span>
+      </div>
+    </div>
+  );
+}
 
 type Route = 'home' | 'franchise' | 'admin';
 
@@ -78,12 +96,20 @@ export function App() {
 
   // Route 1: Dedicated High-Conversion Franchise Landing Page
   if (currentRoute === 'franchise') {
-    return <FranchisePage onBackToHome={() => navigateTo('home')} />;
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <FranchisePage onBackToHome={() => navigateTo('home')} />
+      </Suspense>
+    );
   }
 
   // Route 2: Admin Dashboard (Leads Management & Instagram Slots)
   if (currentRoute === 'admin') {
-    return <AdminDashboard onBackToHome={() => navigateTo('home')} />;
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <AdminDashboard onBackToHome={() => navigateTo('home')} />
+      </Suspense>
+    );
   }
 
   // Route 3: Main Restaurant Landing Page
@@ -95,29 +121,32 @@ export function App() {
       {/* Main Floating Navigation Header */}
       <Header onNavigate={handleNavigate} />
 
-      {/* Hero Section */}
-      <Hero onNavigate={handleNavigate} />
+      {/* Main Semantic Content Landmark */}
+      <main id="main-content" tabIndex={-1} className="outline-none">
+        {/* Hero Section */}
+        <Hero onNavigate={handleNavigate} />
 
-      {/* About Section (Nossa História & Video Player) */}
-      <About />
+        {/* About Section (Nossa História & Video Player) */}
+        <About />
 
-      {/* Menu & Products Section */}
-      <MenuSection />
+        {/* Menu & Products Section */}
+        <MenuSection />
 
-      {/* Respiro Callout Section */}
-      <Respiro onNavigate={handleNavigate} />
+        {/* Respiro Callout Section */}
+        <Respiro onNavigate={handleNavigate} />
 
-      {/* Gallery & Lightbox Section */}
-      <Gallery />
+        {/* Gallery & Lightbox Section */}
+        <Gallery />
 
-      {/* Nossas Casas / Units Section */}
-      <Units />
+        {/* Nossas Casas / Units Section */}
+        <Units />
 
-      {/* Franchise Section (With Quero Começar CTA) */}
-      <Franchise onNavigateToFranchise={() => navigateTo('franchise')} />
+        {/* Franchise Section (With Quero Começar CTA) */}
+        <Franchise onNavigateToFranchise={() => navigateTo('franchise')} />
 
-      {/* Contact Section */}
-      <Contact />
+        {/* Contact Section */}
+        <Contact />
+      </main>
 
       {/* Complete Footer with subtle Admin access */}
       <Footer onNavigate={handleNavigate} />

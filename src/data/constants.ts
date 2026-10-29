@@ -12,7 +12,7 @@ export const SITE_INFO = {
   stampText: '• ORIGEM LITORÂNEA • ALMA MEXICANA • RANGO DE VERDADE',
   cardapioWebUrl: 'https://app.cardapioweb.com/elchicano_pocketfloripa',
   whatsappFloripaUrl: 'https://api.whatsapp.com/send/?phone=5548996520836&text=Ol%C3%A1!%20Gostaria%20de%20fazer%20um%20pedido%20no%20El%20Chicano%20Floripa',
-  whatsappLagunaUrl: 'https://api.whatsapp.com/send/?phone=5548999787816&text=Ol%C3%A1!%20Gostaria%20de%20fazer%20um%20pedido%20no%20El%20Chicano%20Laguna',
+  whatsappLagunaUrl: 'https://api.whatsapp.com/send/?phone=5548996640777&text=Ol%C3%A1!%20Gostaria%20de%20informa%C3%A7%C3%B5es%20sobre%20o%20El%20Chicano%20Laguna',
   instagramUrl: 'https://www.instagram.com/elchicanofloripa',
   instagramPostUrl: 'https://www.instagram.com/p/DXFmGSDljmv/?img_index=1'
 };
@@ -32,12 +32,12 @@ export const UNITS: UnitInfo[] = [
   {
     id: 'unit-laguna',
     city: 'Laguna',
-    neighborhood: 'Centro Histórico',
-    address: 'Rua Gustavo Richard, 45 - Ao lado do porto histórico, Laguna - SC',
-    phone: '(48) 99978-7816',
-    hours: 'Terça a Domingo das 18h às 23h30',
-    mapsUrl: 'https://maps.google.com/?q=El+Chicano+Laguna+Rua+Gustavo+Richard+45',
-    whatsappUrl: 'https://api.whatsapp.com/send/?phone=5548999787816'
+    neighborhood: 'Praia do Mar Grosso',
+    address: 'Rua Giocondo Tasso, 2245 - Laguna - SC',
+    phone: '(48) 99664-0777',
+    hours: 'Pausado Temporariamente',
+    mapsUrl: 'https://maps.google.com/?q=El+Chicano+Laguna+Rua+Giocondo+Tasso+2245',
+    whatsappUrl: 'https://api.whatsapp.com/send/?phone=5548996640777'
   }
 ];
 

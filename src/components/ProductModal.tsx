@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { SITE_INFO, getCategoryColor } from '../data/constants';
 import { X, ExternalLink, Flame, ZoomIn, ZoomOut } from 'lucide-react';
@@ -10,7 +10,7 @@ interface ProductModalProps {
 
 type AspectCategory = 'wide' | 'landscape' | 'portrait' | 'square';
 
-export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) => {
+export const ProductModal = ({ product, onClose }: ProductModalProps) => {
   const [aspectType, setAspectType] = useState<AspectCategory>('landscape');
   const [isZoomed, setIsZoomed] = useState(false);
 
@@ -19,6 +19,16 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
     setIsZoomed(false);
     setAspectType('landscape');
   }, [product?.id]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (!product) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [product]);
 
   // Handle ESC key to close
   useEffect(() => {
@@ -90,6 +100,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
       onClick={onClose}
     >
       <div 
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-modal-name"
         className={`w-full ${getContainerMaxWidth()} bg-[#FAF5E8] border-4 border-[#001219] rounded-[2rem] sm:rounded-[2.5rem] shadow-[12px_12px_0px_0px_#001219] overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200 transition-all ease-[cubic-bezier(0.16,1,0.3,1)] max-h-[92vh]`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -100,7 +113,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 z-30 w-10 h-10 rounded-full bg-[#001219] text-white hover:bg-[#EE9B00] hover:text-[#001219] border-2 border-[#001219] flex items-center justify-center transition-all shadow-chicano-sm hover:scale-105 cursor-pointer"
+          className="absolute top-4 right-4 z-30 w-10 h-10 rounded-full bg-[#001219] text-white hover:bg-[#EE9B00] hover:text-[#001219] border-2 border-[#001219] flex items-center justify-center transition-all shadow-chicano-sm hover:scale-105 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAF5E8]"
           aria-label="Fechar detalhes"
         >
           <X className="w-5 h-5" />
@@ -163,7 +176,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                   e.stopPropagation();
                   setIsZoomed(!isZoomed);
                 }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#001219]/90 hover:bg-[#EE9B00] text-white hover:text-[#001219] border-2 border-[#001219] font-mono text-[9px] uppercase font-bold transition-all shadow-chicano-sm cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#001219]/90 hover:bg-[#EE9B00] text-white hover:text-[#001219] border-2 border-[#001219] font-mono text-[9px] uppercase font-bold transition-all shadow-chicano-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
               >
                 {isZoomed ? (
                   <>
@@ -198,7 +211,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
 
             {/* Title & Price Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-[#001219]/10">
-              <h3 className="font-display font-black text-xl sm:text-2xl text-[#001219] uppercase leading-tight">
+              <h3 id="product-modal-name" className="font-display font-black text-xl sm:text-2xl text-[#001219] uppercase leading-tight">
                 {product.name}
               </h3>
 
@@ -218,7 +231,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                 href={SITE_INFO.cardapioWebUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 relative overflow-hidden group inline-flex items-center justify-center gap-2 py-3 px-6 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-2 border-[#001219] shadow-chicano hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer"
+                className="flex-1 relative overflow-hidden group inline-flex items-center justify-center gap-2 py-3 px-6 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-2 border-[#001219] shadow-chicano hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CA6702] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAF5E8]"
               >
                 <span className="absolute inset-0 -translate-x-full animate-cta-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
                 <span className="relative z-10">Pedir no CardápioWeb</span>
@@ -228,7 +241,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-3 rounded-2xl bg-[#FAF5E8] hover:bg-white text-[#001219] font-mono text-xs uppercase font-bold border-2 border-[#001219] shadow-chicano-sm hover:-translate-y-0.5 transition-all cursor-pointer"
+                className="px-5 py-3 rounded-2xl bg-[#FAF5E8] hover:bg-white text-[#001219] font-mono text-xs uppercase font-bold border-2 border-[#001219] shadow-chicano-sm hover:-translate-y-0.5 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAF5E8]"
               >
                 Fechar
               </button>

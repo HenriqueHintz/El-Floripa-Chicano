@@ -105,7 +105,7 @@ export const Units: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 2. Laguna Card (Fechado Temporariamente) */}
+                {/* 2. Laguna Card (Pausado Temporariamente) */}
                 <div className="p-6 rounded-[2rem] border-4 border-[#001219] bg-white/95 shadow-[6px_6px_0px_0px_#001219] flex flex-col justify-between hover:shadow-[10px_10px_0px_0px_#001219] hover:-translate-y-1.5 transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] opacity-90">
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between">
@@ -114,29 +114,29 @@ export const Units: React.FC = () => {
                         LAGUNA
                       </h3>
                       <span className="inline-flex items-center gap-1 font-mono text-[9px] font-black text-[#AE2012] bg-[#AE2012]/15 px-2 py-0.5 rounded-full border border-[#AE2012]/30 uppercase">
-                        Fechado Temporariamente
+                        Pausado Temporariamente
                       </span>
                     </div>
                     <div className="flex flex-col gap-2 text-xs text-[#001219]/80 font-medium pl-1 leading-relaxed">
-                      <p className="font-black text-sm text-[#001219]">Centro Histórico</p>
-                      <p>Rua Gustavo Richard, 45 - Ao lado do porto histórico, Laguna - SC</p>
+                      <p className="font-black text-sm text-[#001219]">Praia do Mar Grosso</p>
+                      <p>Rua Giocondo Tasso, 2245 - Pausado Temporariamente</p>
                       <div className="w-full h-px bg-[#001219]/5 my-1" />
-                      <p className="flex items-center gap-1.5 text-[#AE2012] font-bold">
-                        <Clock className="w-4 h-4 shrink-0 text-[#AE2012]" />
-                        <span>Fechado temporariamente</span>
+                      <p className="flex items-center gap-1.5 text-[#001219] font-bold">
+                        <Phone className="w-4 h-4 shrink-0 text-[#EE9B00]" />
+                        <span>Celular: (48) 99664-0777</span>
                       </p>
                     </div>
                   </div>
 
                   <div className="mt-6 pt-4 border-t-2 border-dashed border-[#001219]/10 flex items-center justify-between gap-2">
                     <a
-                      href="https://api.whatsapp.com/send/?phone=5548999787816"
+                      href="https://api.whatsapp.com/send/?phone=5548996640777"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-xs font-black text-[#001219] hover:text-[#CA6702] transition-colors"
                     >
                       <Phone className="w-4 h-4 text-[#EE9B00] shrink-0" />
-                      <span>Atendimento</span>
+                      <span>(48) 99664-0777</span>
                     </a>
 
                     <div className="flex items-center gap-1.5">

@@ -14,7 +14,7 @@ const CHAPTERS: Chapter[] = [
   {
     id: 'tex-bra-mex',
     num: '01',
-    text: 'Nascido no centro histórico de Laguna/SC, o El Chicano cresceu para conectar pessoas através de comida de verdade e momentos reais.',
+    text: 'Nascido na praia do Mar Grosso na cidade histórica de Laguna/SC, o El Chicano cresceu para conectar pessoas através de comida de verdade e momentos reais.',
     image: '/images/historia/historia-01-tex-bra-mex.webp',
     alt: 'Foto 1: Tex. Bra. Mex. - Culinária criada pelo nosso chef Rafa',
   },
@@ -28,9 +28,9 @@ const CHAPTERS: Chapter[] = [
   {
     id: 'vamos-a-probar',
     num: '03',
-    text: 'Vamos a probar, chico! De família para família, um acolhimento sem protocolo para conectar pessoas através de comida de verdade.',
+    text: '¡Ándale a Probar! Chicanos Y Chicanas — De família para família, um acolhimento sem protocolo para conectar pessoas através de comida de verdade.',
     image: '/images/historia/historia-03-vamos-a-probar.webp',
-    alt: 'Foto 3: Vamos a probar, chico!',
+    alt: 'Foto 3: ¡Ándale a Probar! Chicanos Y Chicanas',
   },
 ];
 
@@ -127,14 +127,14 @@ export const About: React.FC = () => {
                   >
                     {idx === 0 ? (
                       <>
-                        Nascido no centro histórico de Laguna/SC, o{' '}
+                        Nascido na praia do Mar Grosso na cidade histórica de Laguna/SC, o{' '}
                         <strong className="text-[#EE9B00] font-black">El Chicano</strong>{' '}
                         cresceu para conectar pessoas através de comida de verdade e momentos reais.
                       </>
                     ) : idx === 2 ? (
                       <>
-                        <strong className="text-[#EE9B00] font-black">Vamos a probar, chico!</strong>{' '}
-                        De família para família, um acolhimento sem protocolo para conectar pessoas através de comida de verdade.
+                        <strong className="text-[#EE9B00] font-black">¡Ándale a Probar! Chicanos Y Chicanas</strong>{' '}
+                        — De família para família, um acolhimento sem protocolo para conectar pessoas através de comida de verdade.
                       </>
                     ) : (
                       ch.text

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { submitFranchiseLead, FranchiseLead, getFranchiseVideoConfig, FranchiseVideoConfig } from '../services/d1Api';
-import { ArrowLeft, Send, CheckCircle2, DollarSign, Clock, TrendingUp, Flame, X, ChevronRight, Play } from 'lucide-react';
+import { ArrowLeft, Send, CheckCircle2, Clock, TrendingUp, Flame, X, ChevronRight } from 'lucide-react';
 import { WhatsAppIcon } from './Icons';
 import { Logo } from './Logo';
 import { subscribeRealtime } from '../utils/realtime';
@@ -9,7 +9,7 @@ interface FranchisePageProps {
   onBackToHome: () => void;
 }
 
-export const FranchisePage: React.FC<FranchisePageProps> = ({ onBackToHome }) => {
+export const FranchisePage = ({ onBackToHome }: FranchisePageProps) => {
   const [videoConfig, setVideoConfig] = useState<FranchiseVideoConfig>({
     isEnabled: false,
     videoUrl: '',
@@ -178,7 +178,7 @@ export const FranchisePage: React.FC<FranchisePageProps> = ({ onBackToHome }) =>
               <TrendingUp className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5px]" />
             </div>
             <h3 className="font-display font-black text-sm sm:text-base uppercase text-[#001219] leading-tight">
-              Margem de 22% a 28%
+              Margem de Lucro 15% a 20%
             </h3>
             <p className="font-sans text-[11px] sm:text-xs text-[#001219]/70 mt-1 leading-snug font-medium">
               CMV rigorosamente controlado, fornecedores homologados e ticket médio elevado garantem máxima lucratividade líquida.
@@ -191,10 +191,10 @@ export const FranchisePage: React.FC<FranchisePageProps> = ({ onBackToHome }) =>
               <Clock className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5px]" />
             </div>
             <h3 className="font-display font-black text-sm sm:text-base uppercase text-[#001219] leading-tight">
-              Payback 14 a 18 Meses
+              Payback 18 a 24 Meses
             </h3>
             <p className="font-sans text-[11px] sm:text-xs text-[#001219]/70 mt-1 leading-snug font-medium">
-              Retorno acelerado do capital investido através de suporte completo na escolha do ponto, arquitetura e inauguração.
+              Retorno do investimento estruturado com segurança através de suporte completo na escolha do ponto, arquitetura e inauguração.
             </p>
           </div>
 

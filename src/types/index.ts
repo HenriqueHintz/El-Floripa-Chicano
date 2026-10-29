@@ -1,3 +1,52 @@
+export interface AddOnOption {
+  id: number | string;
+  name: string;
+  price?: number;
+  [key: string]: unknown;
+}
+
+export interface ProductAddOn {
+  id: number | string;
+  name: string;
+  min?: number;
+  max?: number;
+  items?: AddOnOption[];
+  [key: string]: unknown;
+}
+
+export interface D1ProductPayloadItem {
+  id: number | string;
+  name: string;
+  description?: string | null;
+  price: number | string;
+  image_url?: string | null;
+  category?: string;
+  tag?: string;
+  is_featured?: boolean | number;
+  is_active?: boolean | number;
+}
+
+export interface CardapioWebItem {
+  id: number | string;
+  name: string;
+  status: string;
+  description?: string | null;
+  price: number | string;
+  promotional_price?: number | string | null;
+  image_url?: string | null;
+  add_ons?: ProductAddOn[];
+}
+
+export interface CardapioWebCategory {
+  id: number | string;
+  name: string;
+  status: string;
+  description?: string | null;
+  position?: number | null;
+  image_url?: string | null;
+  items?: CardapioWebItem[];
+}
+
 export interface Product {
   id: string | number;
   name: string;
@@ -15,7 +64,7 @@ export interface Product {
   tags?: string[];
   status?: string;
   availableFor?: string[];
-  addOns?: any[];
+  addOns?: ProductAddOn[];
   [key: string]: any;
 }
 

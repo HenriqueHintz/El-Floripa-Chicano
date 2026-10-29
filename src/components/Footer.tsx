@@ -1,7 +1,7 @@
-import React from 'react';
+import type { MouseEvent } from 'react';
 import { Logo } from './Logo';
 import { SITE_INFO, UNITS } from '../data/constants';
-import { MessageCircle, ShoppingBag, Heart } from 'lucide-react';
+import { MessageCircle, ShoppingBag } from 'lucide-react';
 import { InstagramIcon as Instagram } from './Icons';
 import { smoothScrollToTarget } from '../utils/scroll';
 
@@ -9,8 +9,8 @@ interface FooterProps {
   onNavigate?: (href: string) => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
-  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+export const Footer = ({ onNavigate }: FooterProps) => {
+  const handleLinkClick = (e: MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();
     if (onNavigate) {
       onNavigate(href);

@@ -1,12 +1,17 @@
-import { Product, MenuCategory } from '../types';
+import { Product, MenuCategory, D1ProductPayloadItem, CardapioWebCategory, CardapioWebItem } from '../types';
 import { ALL_MENU_PRODUCTS, FULL_MENU_CATEGORIES } from '../data/menu';
 import { SITE_INFO } from '../data/constants';
 import { 
   saveAppJsonToDB, 
   getAppJsonFromDB, 
   deleteAppJsonFromDB, 
-  purgeLegacyLocalStorageBloat 
+  purgeLegacyLocalStorageBloat,
+  getMediaFromDB,
+  saveMediaToDB,
+  deleteMediaFromDB
 } from '../utils/mediaStorage';
+import { getActiveSessionToken, sanitizeString } from '../utils/security';
+import { broadcastRealtime } from '../utils/realtime';
 
 const CACHE_KEY_MENU = 'elchicano_d1_menu_cache';
 const CACHE_KEY_SETTINGS = 'elchicano_d1_settings_cache';
@@ -43,7 +48,7 @@ export async function getLiveProducts(onUpdate?: (products: Product[]) => void):
         if (!res.ok) throw new Error('D1 API offline or static hosting');
         return res.json();
       })
-      .then((payload: { success: boolean; products: any[] }) => {
+      .then((payload: { success: boolean; products: D1ProductPayloadItem[] }) => {
         if (payload?.success && Array.isArray(payload.products) && payload.products.length > 0) {
           const mapped: Product[] = payload.products.map((p) => ({
             id: Number(p.id) || p.id,
@@ -86,7 +91,7 @@ export async function getLiveSettings(): Promise<Record<string, string>> {
     whatsapp_floripa: SITE_INFO.whatsappFloripaUrl,
     whatsapp_laguna: SITE_INFO.whatsappLagunaUrl,
     unit_floripa_status: 'Aberto Hoje',
-    unit_laguna_status: 'Fechado Temporariamente',
+    unit_laguna_status: 'Pausado Temporariamente',
   };
 
   try {
@@ -118,8 +123,6 @@ export async function getLiveSettings(): Promise<Record<string, string>> {
 // -----------------------------------------------------------------------------
 // Franchise Leads API (Cloudflare D1 + localStorage fallback)
 // -----------------------------------------------------------------------------
-
-import { getActiveSessionToken, sanitizeString } from '../utils/security';
 
 export interface FranchiseLead {
   id?: number | string;
@@ -217,7 +220,7 @@ export async function updateFranchiseLeadStatus(id: number | string, status: str
   // Update in localStorage
   try {
     const existing: FranchiseLead[] = JSON.parse(localStorage.getItem(LOCAL_STORAGE_LEADS_KEY) || '[]');
-    const updated = existing.map((l) => (String(l.id) === String(id) ? { ...l, status: status as any } : l));
+    const updated = existing.map((l) => (String(l.id) === String(id) ? { ...l, status: status as NonNullable<FranchiseLead['status']> } : l));
     localStorage.setItem(LOCAL_STORAGE_LEADS_KEY, JSON.stringify(updated));
   } catch {}
 
@@ -303,9 +306,6 @@ export interface D1GalleryPost {
   is_active?: number;
   updated_at?: string;
 }
-
-import { getMediaFromDB, saveMediaToDB, deleteMediaFromDB } from '../utils/mediaStorage';
-import { broadcastRealtime } from '../utils/realtime';
 
 const LOCAL_STORAGE_GALLERY_KEY = 'elchicano_d1_gallery_store';
 
@@ -716,12 +716,12 @@ export async function syncMenuFromCardapioWeb(): Promise<{
 
     // Map categories and items to strict MenuCategory and Product models
     const mappedCategories: MenuCategory[] = rawCategories
-      .filter((cat: any) => cat.status === 'ACTIVE' && Array.isArray(cat.items))
-      .map((cat: any, catIndex: number) => {
+      .filter((cat: CardapioWebCategory) => cat.status === 'ACTIVE' && Array.isArray(cat.items))
+      .map((cat: CardapioWebCategory, catIndex: number) => {
         const catName = cat.name.trim();
         const mappedItems: Product[] = (cat.items || [])
-          .filter((item: any) => item.status === 'ACTIVE')
-          .map((item: any) => {
+          .filter((item: CardapioWebItem) => item.status === 'ACTIVE')
+          .map((item: CardapioWebItem) => {
             const rawDesc = item.description || '';
             const cleanDesc = rawDesc.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
             const imageUrl = item.image_url || '';
@@ -802,14 +802,15 @@ export async function syncMenuFromCardapioWeb(): Promise<{
       totalCategories: mappedCategories.length,
       lastSyncAt: syncTimestamp,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('syncMenuFromCardapioWeb error:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Falha ao sincronizar com CardápioWeb';
     return {
       success: false,
       totalProducts: 0,
       totalCategories: 0,
       lastSyncAt: '',
-      error: err?.message || 'Falha ao sincronizar com CardápioWeb',
+      error: errorMessage,
     };
   }
 }

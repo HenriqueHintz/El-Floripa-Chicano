@@ -28,7 +28,6 @@ import {
   Search, 
   Download, 
   Image as ImageIcon, 
-  Video as VideoIcon,
   Phone,
   Mail,
   MapPin,

@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
-export const TurquoiseCanvas: React.FC = () => {
+export const TurquoiseCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -9,7 +9,7 @@ export const TurquoiseCanvas: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let animId: number;
+    let animId: number | null = null;
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
@@ -76,6 +76,11 @@ export const TurquoiseCanvas: React.FC = () => {
     }
 
     const render = () => {
+      if (document.hidden) {
+        animId = null;
+        return;
+      }
+
       ctx.clearRect(0, 0, width, height);
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
@@ -90,11 +95,35 @@ export const TurquoiseCanvas: React.FC = () => {
       animId = requestAnimationFrame(render);
     };
 
-    render();
+    const startAnimation = () => {
+      if (animId === null && !document.hidden) {
+        animId = requestAnimationFrame(render);
+      }
+    };
+
+    const stopAnimation = () => {
+      if (animId !== null) {
+        cancelAnimationFrame(animId);
+        animId = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopAnimation();
+      } else {
+        startAnimation();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    startAnimation();
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(animId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      stopAnimation();
     };
   }, []);
 
