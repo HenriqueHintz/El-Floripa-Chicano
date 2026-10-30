@@ -18,6 +18,13 @@ const CACHE_HEADERS = {
   'Cache-Control': 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400',
 };
 
+// Real-time zero-cache headers for dynamic administrative endpoints
+const NO_CACHE_HEADERS = {
+  ...CORS_HEADERS,
+  'Content-Type': 'application/json',
+  'Cache-Control': 'no-cache, no-store, must-revalidate',
+};
+
 /**
  * Strict Input Sanitizer to neutralize HTML/Script injections in database records
  */
@@ -305,7 +312,7 @@ export default {
             'SELECT * FROM gallery_posts WHERE is_active = 1 ORDER BY slot_number ASC'
           ).all();
           return new Response(JSON.stringify({ success: true, posts: postsRes.results }), {
-            headers: CACHE_HEADERS,
+            headers: NO_CACHE_HEADERS,
           });
         }
 
@@ -344,8 +351,8 @@ export default {
 
           const slotNum = Number(body.slot_number);
           const type = sanitize(body.type, 20) || 'photo';
-          const mediaUrl = sanitize(body.media_url, 500);
-          const thumbUrl = sanitize(body.thumbnail_url || body.media_url, 500);
+          const mediaUrl = typeof body.media_url === 'string' ? body.media_url.trim().slice(0, 2000000) : '';
+          const thumbUrl = typeof body.thumbnail_url === 'string' ? body.thumbnail_url.trim().slice(0, 2000000) : mediaUrl;
           const permalink = sanitize(body.permalink, 500);
           const caption = sanitize(body.caption, 300);
           const category = sanitize(body.category, 50) || 'ElChicano';
@@ -367,7 +374,30 @@ export default {
             .run();
 
           return new Response(JSON.stringify({ success: true, message: 'Slot de galeria atualizado' }), {
-            headers: CORS_HEADERS,
+            headers: NO_CACHE_HEADERS,
+          });
+        }
+
+        // DELETE /api/gallery - Delete slot or clear all (PROTECTED)
+        if (url.pathname === '/api/gallery' && request.method === 'DELETE') {
+          if (!isAuthorized(request, env)) {
+            return new Response(JSON.stringify({ error: 'Acesso não autorizado' }), {
+              status: 401,
+              headers: CORS_HEADERS,
+            });
+          }
+
+          const body = (await request.json().catch(() => ({}))) as any;
+          if (body.slot_number) {
+            await env.DB.prepare('DELETE FROM gallery_posts WHERE slot_number = ?')
+              .bind(Number(body.slot_number))
+              .run();
+          } else if (url.searchParams.get('all') === 'true') {
+            await env.DB.prepare('DELETE FROM gallery_posts').run();
+          }
+
+          return new Response(JSON.stringify({ success: true, message: 'Slot excluído com sucesso' }), {
+            headers: NO_CACHE_HEADERS,
           });
         }
 

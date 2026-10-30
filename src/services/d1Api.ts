@@ -323,71 +323,15 @@ export interface D1GalleryPost {
 
 const LOCAL_STORAGE_GALLERY_KEY = 'elchicano_d1_gallery_store';
 
-const DEFAULT_GALLERY_SLOTS: D1GalleryPost[] = [
-  {
-    slot_number: 1,
-    type: 'photo',
-    media_url: '/images/gallery/gallery-4.webp',
-    thumbnail_url: '/images/gallery/gallery-4.webp',
-    permalink: 'https://www.instagram.com/elchicanofloripa/',
-    caption: 'Tacos Artesanais & Sabor Autêntico',
-    is_active: 1,
-  },
-  {
-    slot_number: 2,
-    type: 'photo',
-    media_url: '/images/gallery/gallery-5.webp',
-    thumbnail_url: '/images/gallery/gallery-5.webp',
-    permalink: 'https://www.instagram.com/elchicanofloripa/',
-    caption: 'Momentos El Chicano Floripa',
-    is_active: 1,
-  },
-  {
-    slot_number: 3,
-    type: 'photo',
-    media_url: '/images/gallery/gallery-6.webp',
-    thumbnail_url: '/images/gallery/gallery-6.webp',
-    permalink: 'https://www.instagram.com/elchicanofloripa/',
-    caption: 'Porções & Drinks Refrescantes',
-    is_active: 1,
-  },
-  {
-    slot_number: 4,
-    type: 'photo',
-    media_url: '/images/gallery/gallery-7.webp',
-    thumbnail_url: '/images/gallery/gallery-7.webp',
-    permalink: 'https://www.instagram.com/elchicanofloripa/',
-    caption: 'Experiência Completa Tex-Mex',
-    is_active: 1,
-  },
-  {
-    slot_number: 5,
-    type: 'photo',
-    media_url: '/images/products/el-chicano-21.webp',
-    thumbnail_url: '/images/products/el-chicano-21.webp',
-    permalink: 'https://www.instagram.com/elchicanofloripa/',
-    caption: 'Nossas Quesadillas Especiais',
-    is_active: 1,
-  },
-  {
-    slot_number: 6,
-    type: 'photo',
-    media_url: '/images/products/el-chicano-45.webp',
-    thumbnail_url: '/images/products/el-chicano-45.webp',
-    permalink: 'https://www.instagram.com/elchicanofloripa/',
-    caption: 'Burritos Generosos & Recheados',
-    is_active: 1,
-  },
-  {
-    slot_number: 7,
-    type: 'photo',
-    media_url: '/images/products/el-chicano-246.webp',
-    thumbnail_url: '/images/products/el-chicano-246.webp',
-    permalink: 'https://www.instagram.com/elchicanofloripa/',
-    caption: 'Nachos Crocantes com Guacamole',
-    is_active: 1,
-  },
-];
+const DEFAULT_GALLERY_SLOTS: D1GalleryPost[] = [1, 2, 3, 4, 5, 6, 7].map((num) => ({
+  slot_number: num,
+  type: 'photo',
+  media_url: '',
+  thumbnail_url: '',
+  permalink: 'https://www.instagram.com/elchicanofloripa/',
+  caption: '',
+  is_active: 0,
+}));
 
 export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
   let posts: D1GalleryPost[] = [];
@@ -512,7 +456,7 @@ export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    if ((post.media_url?.length || 0) < 500000) {
+    if ((post.media_url?.length || 0) < 2000000) {
       fetch(getApiUrl('/api/gallery'), {
         method: 'POST',
         headers,

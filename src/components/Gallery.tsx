@@ -60,7 +60,10 @@ export const Gallery: React.FC = () => {
     // 1. Initial hydration
     refreshGallery();
 
-    // 2. Instant Real-Time Cross-Component & Cross-Tab Subscription
+    // 2. Real-time periodic sync (every 4 seconds) for live multi-device feed updates
+    const pollInterval = setInterval(refreshGallery, 4000);
+
+    // 3. Instant Real-Time Cross-Component & Cross-Tab Subscription
     const unsub = subscribeRealtime('GALLERY_UPDATED', (updatedPosts) => {
       if (isMounted && Array.isArray(updatedPosts) && updatedPosts.length > 0) {
         setD1Posts(updatedPosts);
@@ -69,7 +72,7 @@ export const Gallery: React.FC = () => {
       }
     });
 
-    // 3. Tab Focus, Visibility & Storage Revalidation
+    // 4. Tab Focus, Visibility & Storage Revalidation
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         refreshGallery();
@@ -86,6 +89,7 @@ export const Gallery: React.FC = () => {
 
     return () => {
       isMounted = false;
+      clearInterval(pollInterval);
       unsub();
       window.removeEventListener('focus', refreshGallery);
       document.removeEventListener('visibilitychange', handleVisibility);

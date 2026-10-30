@@ -136,7 +136,7 @@ export const Units: React.FC = () => {
                       className="flex items-center gap-1.5 text-xs font-black text-[#001219] hover:text-[#CA6702] transition-colors"
                     >
                       <Phone className="w-4 h-4 text-[#EE9B00] shrink-0" />
-                      <span>(48) 99664-0777</span>
+                      <span>Celular: (48) 99664-0777</span>
                     </a>
 
                     <div className="flex items-center gap-1.5">
