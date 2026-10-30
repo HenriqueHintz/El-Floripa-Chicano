@@ -112,7 +112,7 @@ export const LightboxModal = ({
           {item.type === 'video' ? (
             <video
               src={item.src}
-              poster={item.thumbnail}
+              poster={item.thumbnail && !item.thumbnail.endsWith('.mp4') ? item.thumbnail : '/images/sections/respiro-bg.webp'}
               controls
               autoPlay
               playsInline

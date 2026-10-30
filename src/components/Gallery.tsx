@@ -31,7 +31,7 @@ const FIXED_VIDEO_POST: D1GalleryPost = {
   slot_number: 0,
   type: 'video',
   media_url: '/videos/galeria/video-1.mp4',
-  thumbnail_url: '/videos/galeria/video-1.mp4',
+  thumbnail_url: '/images/sections/respiro-bg.webp',
   permalink: SITE_INFO.instagramUrl,
   caption: 'O começo do El Chicano',
   category: 'Vídeo Oficial',
@@ -169,6 +169,7 @@ export const Gallery: React.FC = () => {
               {post.type === 'video' ? (
                 <video
                   src={post.media_url}
+                  poster={post.thumbnail_url && !post.thumbnail_url.endsWith('.mp4') ? post.thumbnail_url : '/images/sections/respiro-bg.webp'}
                   loop
                   muted
                   playsInline

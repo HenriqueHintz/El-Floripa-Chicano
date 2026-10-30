@@ -383,7 +383,12 @@ export default {
       }
     }
 
-    // Static assets fallback (HTML, CSS, JS, Images from Vite dist)
-    return env.ASSETS.fetch(request);
+    // Static assets fallback if configured, otherwise health check
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    }
+    return new Response(JSON.stringify({ status: 'ok', service: 'El Chicano D1 API' }), {
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    });
   },
 };

@@ -17,6 +17,13 @@ const CACHE_KEY_MENU = 'elchicano_d1_menu_cache';
 const CACHE_KEY_SETTINGS = 'elchicano_d1_settings_cache';
 const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour client cache
 
+export const CLOUDFLARE_WORKER_API = 'https://el-chicano-api.rico-pompeo.workers.dev';
+
+export function getApiUrl(path: string): string {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${CLOUDFLARE_WORKER_API}${cleanPath}`;
+}
+
 interface CachedData<T> {
   data: T;
   timestamp: number;
@@ -43,7 +50,7 @@ export async function getLiveProducts(onUpdate?: (products: Product[]) => void):
 
   // 2. Background Revalidation from Cloudflare D1
   if (typeof window !== 'undefined') {
-    fetch('/api/menu')
+    fetch(getApiUrl('/api/menu'))
       .then((res) => {
         if (!res.ok) throw new Error('D1 API offline or static hosting');
         return res.json();
@@ -103,7 +110,7 @@ export async function getLiveSettings(): Promise<Record<string, string>> {
       }
     }
 
-    const res = await fetch('/api/settings');
+    const res = await fetch(getApiUrl('/api/settings'));
     if (!res.ok) return fallbackSettings;
     const payload = await res.json();
     if (payload?.success && payload.settings) {
@@ -155,28 +162,33 @@ export async function submitFranchiseLead(lead: FranchiseLead): Promise<{ succes
     created_at: new Date().toISOString(),
   };
 
-  // 1. Always save in localStorage immediately (guaranteed instant persistence)
+  // 1. Send directly to live Cloudflare Worker D1 API (synchronizes across all devices!)
   try {
-    const existing = JSON.parse(localStorage.getItem(LOCAL_STORAGE_LEADS_KEY) || '[]');
-    existing.unshift(sanitizedLead);
-    localStorage.setItem(LOCAL_STORAGE_LEADS_KEY, JSON.stringify(existing));
-  } catch (err) {
-    console.error('Error saving lead to localStorage:', err);
-  }
-
-  // 2. Also send to Cloudflare D1
-  try {
-    const res = await fetch('/api/leads', {
+    const res = await fetch(getApiUrl('/api/leads'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sanitizedLead),
     });
     if (res.ok) {
       const data = await res.json();
+      try {
+        const existing = JSON.parse(localStorage.getItem(LOCAL_STORAGE_LEADS_KEY) || '[]');
+        existing.unshift({ ...sanitizedLead, id: data.id || sanitizedLead.id });
+        localStorage.setItem(LOCAL_STORAGE_LEADS_KEY, JSON.stringify(existing));
+      } catch {}
       return { success: true, id: data.id || sanitizedLead.id };
     }
-  } catch {
-    // Return local success
+  } catch (err) {
+    console.warn('Network error saving to Cloudflare D1:', err);
+  }
+
+  // 2. Fallback to localStorage if offline
+  try {
+    const existing = JSON.parse(localStorage.getItem(LOCAL_STORAGE_LEADS_KEY) || '[]');
+    existing.unshift(sanitizedLead);
+    localStorage.setItem(LOCAL_STORAGE_LEADS_KEY, JSON.stringify(existing));
+  } catch (err) {
+    console.error('Error saving lead to localStorage:', err);
   }
 
   return { success: true, id: sanitizedLead.id };
@@ -190,16 +202,18 @@ export async function getFranchiseLeads(): Promise<FranchiseLead[]> {
   }
 
   try {
-    const res = await fetch('/api/leads', { headers });
+    const res = await fetch(getApiUrl('/api/leads'), { headers });
     if (res.ok) {
       const payload = await res.json();
       if (payload?.success && Array.isArray(payload.leads)) {
-        localStorage.setItem(LOCAL_STORAGE_LEADS_KEY, JSON.stringify(payload.leads));
+        try {
+          localStorage.setItem(LOCAL_STORAGE_LEADS_KEY, JSON.stringify(payload.leads));
+        } catch {}
         return payload.leads;
       }
     }
-  } catch {
-    // Read from localStorage
+  } catch (err) {
+    console.warn('Could not fetch remote leads from D1:', err);
   }
 
   try {
@@ -226,7 +240,7 @@ export async function updateFranchiseLeadStatus(id: number | string, status: str
 
   // Update in D1
   try {
-    await fetch('/api/leads', {
+    await fetch(getApiUrl('/api/leads'), {
       method: 'PATCH',
       headers,
       body: JSON.stringify({ id, status: sanitizeString(status) }),
@@ -254,7 +268,7 @@ export async function deleteFranchiseLead(id: number | string): Promise<boolean>
 
   // 2. Remove from D1 if backend active
   try {
-    await fetch('/api/leads', {
+    await fetch(getApiUrl('/api/leads'), {
       method: 'DELETE',
       headers,
       body: JSON.stringify({ id }),
@@ -280,7 +294,7 @@ export async function clearAllFranchiseLeads(): Promise<boolean> {
 
   // 2. Clear in D1 if backend active
   try {
-    await fetch('/api/leads?all=true', {
+    await fetch(getApiUrl('/api/leads?all=true'), {
       method: 'DELETE',
       headers,
     });
@@ -309,21 +323,77 @@ export interface D1GalleryPost {
 
 const LOCAL_STORAGE_GALLERY_KEY = 'elchicano_d1_gallery_store';
 
-const DEFAULT_GALLERY_SLOTS: D1GalleryPost[] = [1, 2, 3, 4, 5, 6, 7].map((num) => ({
-  slot_number: num,
-  type: 'photo',
-  media_url: '',
-  thumbnail_url: '',
-  permalink: 'https://www.instagram.com/elchicanofloripa/',
-  caption: `Post #${num}`,
-  is_active: 1,
-}));
+const DEFAULT_GALLERY_SLOTS: D1GalleryPost[] = [
+  {
+    slot_number: 1,
+    type: 'photo',
+    media_url: '/images/gallery/gallery-4.webp',
+    thumbnail_url: '/images/gallery/gallery-4.webp',
+    permalink: 'https://www.instagram.com/elchicanofloripa/',
+    caption: 'Tacos Artesanais & Sabor Autêntico',
+    is_active: 1,
+  },
+  {
+    slot_number: 2,
+    type: 'photo',
+    media_url: '/images/gallery/gallery-5.webp',
+    thumbnail_url: '/images/gallery/gallery-5.webp',
+    permalink: 'https://www.instagram.com/elchicanofloripa/',
+    caption: 'Momentos El Chicano Floripa',
+    is_active: 1,
+  },
+  {
+    slot_number: 3,
+    type: 'photo',
+    media_url: '/images/gallery/gallery-6.webp',
+    thumbnail_url: '/images/gallery/gallery-6.webp',
+    permalink: 'https://www.instagram.com/elchicanofloripa/',
+    caption: 'Porções & Drinks Refrescantes',
+    is_active: 1,
+  },
+  {
+    slot_number: 4,
+    type: 'photo',
+    media_url: '/images/gallery/gallery-7.webp',
+    thumbnail_url: '/images/gallery/gallery-7.webp',
+    permalink: 'https://www.instagram.com/elchicanofloripa/',
+    caption: 'Experiência Completa Tex-Mex',
+    is_active: 1,
+  },
+  {
+    slot_number: 5,
+    type: 'photo',
+    media_url: '/images/products/el-chicano-21.webp',
+    thumbnail_url: '/images/products/el-chicano-21.webp',
+    permalink: 'https://www.instagram.com/elchicanofloripa/',
+    caption: 'Nossas Quesadillas Especiais',
+    is_active: 1,
+  },
+  {
+    slot_number: 6,
+    type: 'photo',
+    media_url: '/images/products/el-chicano-45.webp',
+    thumbnail_url: '/images/products/el-chicano-45.webp',
+    permalink: 'https://www.instagram.com/elchicanofloripa/',
+    caption: 'Burritos Generosos & Recheados',
+    is_active: 1,
+  },
+  {
+    slot_number: 7,
+    type: 'photo',
+    media_url: '/images/products/el-chicano-246.webp',
+    thumbnail_url: '/images/products/el-chicano-246.webp',
+    permalink: 'https://www.instagram.com/elchicanofloripa/',
+    caption: 'Nachos Crocantes com Guacamole',
+    is_active: 1,
+  },
+];
 
 export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
   let posts: D1GalleryPost[] = [];
 
   try {
-    const res = await fetch('/api/gallery');
+    const res = await fetch(getApiUrl('/api/gallery'));
     if (res.ok) {
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
@@ -443,7 +513,7 @@ export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
     }
 
     if ((post.media_url?.length || 0) < 500000) {
-      fetch('/api/gallery', {
+      fetch(getApiUrl('/api/gallery'), {
         method: 'POST',
         headers,
         body: JSON.stringify(post),
@@ -497,7 +567,7 @@ export async function clearD1GallerySlot(slotNumber: number): Promise<boolean> {
   try {
     const token = getActiveSessionToken();
     if (token) {
-      fetch('/api/gallery', {
+      fetch(getApiUrl('/api/gallery'), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ slot_number: slotNum }),
@@ -523,9 +593,9 @@ const LOCAL_STORAGE_VIDEO_KEY = 'elchicano_d1_franchise_video';
 
 export async function getFranchiseVideoConfig(): Promise<FranchiseVideoConfig> {
   const DEFAULT_CONFIG: FranchiseVideoConfig = {
-    isEnabled: false,
-    videoUrl: '',
-    posterUrl: '',
+    isEnabled: true,
+    videoUrl: '/videos/about-video.mp4',
+    posterUrl: '/images/sections/franquia-bg.webp',
     title: 'Apresentação do Modelo El Chicano',
   };
 

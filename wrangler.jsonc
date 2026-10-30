@@ -1,17 +1,13 @@
-﻿{
-  " $schema\: \node_modules/wrangler/config-schema.json\,
- \name\: \el-chicano\,
- \main\: \worker/index.ts\,
- \compatibility_date\: \2026-10-16\,
- \assets\: {
- \directory\: \./dist\,
- \binding\: \ASSETS\
- },
- \d1_databases\: [
- {
- \binding\: \DB\,
- \database_name\: \el-chicano-db\,
- \database_id\: \08b76053-a2b4-4bca-938e-cd0777adc498\
- }
- ]
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "el-chicano",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-16",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "el-chicano-db",
+      "database_id": "08b76053-a2b4-4bca-938e-cd0777adc498"
+    }
+  ]
 }

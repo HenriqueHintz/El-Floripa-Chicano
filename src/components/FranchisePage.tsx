@@ -222,7 +222,7 @@ export const FranchisePage = ({ onBackToHome }: FranchisePageProps) => {
             <div className="relative aspect-video rounded-xl overflow-hidden bg-black border-2 border-[#001219]">
               <video
                 src={videoConfig.videoUrl}
-                poster={videoConfig.posterUrl || undefined}
+                poster={videoConfig.posterUrl || '/images/sections/franquia-bg.webp'}
                 controls
                 playsInline
                 className="w-full h-full object-cover"
