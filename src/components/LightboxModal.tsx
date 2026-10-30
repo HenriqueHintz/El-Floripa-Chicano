@@ -111,8 +111,8 @@ export const LightboxModal = ({
         <div className="relative bg-black flex items-center justify-center max-h-[62vh] overflow-hidden">
           {item.type === 'video' ? (
             <video
-              src={item.src}
-              poster={item.thumbnail && !item.thumbnail.endsWith('.mp4') ? item.thumbnail : '/images/sections/respiro-bg.webp'}
+              src={item.src ? `${item.src}${item.src.includes('#') ? '' : '#t=0.001'}` : ''}
+              poster={item.thumbnail && !item.thumbnail.endsWith('.mp4') ? item.thumbnail : undefined}
               controls
               autoPlay
               playsInline

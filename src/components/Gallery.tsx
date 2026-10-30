@@ -31,7 +31,7 @@ const FIXED_VIDEO_POST: D1GalleryPost = {
   slot_number: 0,
   type: 'video',
   media_url: '/videos/galeria/video-1.mp4',
-  thumbnail_url: '/images/sections/respiro-bg.webp',
+  thumbnail_url: '',
   permalink: SITE_INFO.instagramUrl,
   caption: 'O começo do El Chicano',
   category: 'Vídeo Oficial',
@@ -128,7 +128,7 @@ export const Gallery: React.FC = () => {
     id: String(p.id || p.slot_number),
     type: p.type === 'video' ? 'video' : 'photo',
     src: p.media_url,
-    thumbnail: p.thumbnail_url || p.media_url,
+    thumbnail: p.thumbnail_url || (p.type === 'video' ? '' : p.media_url),
     caption: p.caption || 'Momento El Chicano Floripa',
     category: p.category || (p.type === 'video' ? 'Vídeo Oficial' : 'Instagram'),
     likes: (p.likes || 120) + (likedIds.has(String(p.id || p.slot_number)) ? 1 : 0),
@@ -151,7 +151,7 @@ export const Gallery: React.FC = () => {
         id: String(post.id || post.slot_number),
         type: post.type === 'video' ? 'video' : 'photo',
         src: post.media_url,
-        thumbnail: post.thumbnail_url || post.media_url,
+        thumbnail: post.thumbnail_url || (post.type === 'video' ? '' : post.media_url),
         caption: post.caption || 'Momento El Chicano Floripa',
         category: post.category || (post.type === 'video' ? 'Vídeo Oficial' : 'Instagram'),
         likes: post.likes || 120,
@@ -172,8 +172,8 @@ export const Gallery: React.FC = () => {
             <div className="relative aspect-[4/3] bg-black overflow-hidden">
               {post.type === 'video' ? (
                 <video
-                  src={post.media_url}
-                  poster={post.thumbnail_url && !post.thumbnail_url.endsWith('.mp4') ? post.thumbnail_url : '/images/sections/respiro-bg.webp'}
+                  src={post.media_url ? `${post.media_url}${post.media_url.includes('#') ? '' : '#t=0.001'}` : ''}
+                  poster={post.thumbnail_url && !post.thumbnail_url.endsWith('.mp4') ? post.thumbnail_url : undefined}
                   loop
                   muted
                   playsInline
