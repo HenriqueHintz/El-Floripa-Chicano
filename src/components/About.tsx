@@ -90,7 +90,7 @@ export const About: React.FC = () => {
     if (!mobileScrollRef.current) return;
     const container = mobileScrollRef.current;
     const scrollLeft = container.scrollLeft;
-    const cardWidth = container.offsetWidth * 0.84;
+    const cardWidth = container.offsetWidth * 0.88;
     if (cardWidth <= 0) return;
     const newIdx = Math.round(scrollLeft / cardWidth);
     setMobileIdx(Math.max(0, Math.min(CHAPTERS.length - 1, newIdx)));
@@ -101,14 +101,36 @@ export const About: React.FC = () => {
     const container = mobileScrollRef.current;
     const cards = container.children;
     if (cards[idx]) {
-      (cards[idx] as HTMLElement).scrollIntoView({
+      const card = cards[idx] as HTMLElement;
+      const containerWidth = container.clientWidth;
+      const cardWidth = card.clientWidth;
+      const cardLeft = card.offsetLeft;
+      const targetLeft = cardLeft - (containerWidth - cardWidth) / 2;
+
+      container.scrollTo({
+        left: Math.max(0, targetLeft),
         behavior: 'smooth',
-        inline: 'center',
-        block: 'nearest',
       });
       setMobileIdx(idx);
     }
   };
+
+  // Auto-slide automático a cada 3 segundos exclusivamente na versão mobile (< 1024px)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const timer = setInterval(() => {
+      if (window.innerWidth < 1024) {
+        setMobileIdx((currentIdx) => {
+          const nextIdx = (currentIdx + 1) % CHAPTERS.length;
+          scrollToMobileChapter(nextIdx);
+          return nextIdx;
+        });
+      }
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const nextMobileChapter = () => {
     const next = (mobileIdx + 1) % CHAPTERS.length;
@@ -169,10 +191,10 @@ export const About: React.FC = () => {
               {CHAPTERS.map((ch, idx) => (
                 <div
                   key={`mob-card-${ch.id}`}
-                  className="snap-center shrink-0 w-[84vw] max-w-[325px] rounded-2xl p-1.5 bg-white/10 backdrop-blur-md border border-white/20 shadow-chicano flex flex-col justify-between"
+                  className="snap-center shrink-0 w-[88vw] max-w-[390px] rounded-2xl p-2 bg-white/10 backdrop-blur-md border border-white/20 shadow-chicano flex flex-col justify-between"
                 >
-                  {/* Foto do Capítulo */}
-                  <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-[#001219]">
+                  {/* Foto do Capítulo Ampliada para Máxima Visibilidade */}
+                  <div className="relative w-full aspect-[4/3] min-h-[250px] rounded-xl overflow-hidden bg-[#001219]">
                     <img
                       src={ch.image}
                       alt={ch.alt}
@@ -182,14 +204,14 @@ export const About: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-[#001219]/75 via-transparent to-transparent pointer-events-none" />
                     
                     {/* Badge do Capítulo */}
-                    <div className="absolute bottom-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-black/80 backdrop-blur-md border border-white/20 text-[#EE9B00] font-mono text-[10px] font-black">
+                    <div className="absolute bottom-3 right-3 px-3 py-1 rounded-full bg-black/85 backdrop-blur-md border border-white/25 text-[#EE9B00] font-mono text-[11px] font-black">
                       CAPÍTULO {ch.num} / 03
                     </div>
                   </div>
 
                   {/* Texto do Capítulo */}
-                  <div className="p-3 text-left">
-                    <p className="font-sans text-[13px] sm:text-sm font-medium leading-relaxed text-white/95">
+                  <div className="p-3.5 text-left">
+                    <p className="font-sans text-sm sm:text-base font-medium leading-relaxed text-white/95">
                       {idx === 0 ? (
                         <>
                           Nascido na praia do Mar Grosso na cidade histórica de Laguna/SC, o{' '}
