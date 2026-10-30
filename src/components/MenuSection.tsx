@@ -172,12 +172,6 @@ export const MenuSection: React.FC = () => {
         
         {/* Header & Title */}
         <div className="flex flex-col items-center text-center gap-3.5 mb-8">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FAF5E8] text-[#001219] border-2 border-[#001219] shadow-chicano-sm">
-            <Flame className="w-3.5 h-3.5 text-[#EE9B00] fill-current" />
-            <span className="font-mono text-[11px] sm:text-xs font-black uppercase tracking-widest">
-              ¡Ándale a Probar! • Chicanos Y Chicanas
-            </span>
-          </div>
           <h2 className="font-display font-black text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-white uppercase leading-none tracking-tight drop-shadow-[0_4px_20px_rgba(0,0,0,0.9)]">
             O CARDÁPIO <span className="text-[#EE9B00]">DO EL CHICANO</span>
           </h2>

@@ -44,13 +44,6 @@ export const Respiro: React.FC<RespiroProps> = ({ onNavigate }) => {
           <div className="absolute inset-4 border-[1.5px] border-dashed border-[#001219]/15 rounded-[1.8rem] pointer-events-none" />
 
           <div className="relative z-10 flex flex-col items-center w-full">
-            {/* Tagline Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#001219] text-[#EE9B00] border-2 border-[#001219] shadow-chicano-sm mb-4">
-              <span className="font-mono text-xs font-black uppercase tracking-widest">
-                ¡Ándale a Probar! • Chicanos Y Chicanas
-              </span>
-            </div>
-
             {/* Top Flame Icon */}
             <div className="w-14 h-14 rounded-2xl bg-[#EE9B00] border-2 border-[#001219] shadow-chicano-sm flex items-center justify-center shrink-0 mb-6 group-hover:scale-110 transition-transform duration-300">
               <Flame className="w-7 h-7 text-[#001219] fill-current animate-flame-flicker" />
