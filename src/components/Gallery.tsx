@@ -261,7 +261,7 @@ export const Gallery: React.FC = () => {
   return (
     <section
       id="gallery-section"
-      className="min-h-[100dvh] py-16 md:py-24 relative overflow-hidden flex flex-col justify-center"
+      className="min-h-[100dvh] pt-20 pb-12 md:py-24 relative overflow-hidden flex flex-col justify-center"
       style={{
         background: 'linear-gradient(180deg, #005F73 0%, #004754 50%, #003843 100%)',
       }}
@@ -280,18 +280,18 @@ export const Gallery: React.FC = () => {
       <div className="max-w-[92rem] mx-auto px-4 sm:px-8 lg:px-12 relative z-10 w-full my-auto">
         
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-          <div className="text-left flex flex-col gap-3">
-            <span className="inline-flex items-center gap-2 text-[10px] font-mono tracking-widest text-white uppercase font-bold px-3.5 py-1.5 bg-[#0A9396] border-2 border-[#001219] rounded-full w-fit shadow-[2px_2px_0px_#001219]">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 mb-6 sm:mb-12">
+          <div className="text-left flex flex-col gap-2.5 sm:gap-3">
+            <span className="inline-flex items-center gap-2 text-[10px] font-mono tracking-widest text-white uppercase font-bold px-3 py-1 sm:px-3.5 sm:py-1.5 bg-[#0A9396] border-2 border-[#001219] rounded-full w-fit shadow-[2px_2px_0px_#001219]">
               <InstagramIcon className="w-3.5 h-3.5" />
               Feed Instagram
             </span>
 
-            <h2 className="font-display font-black text-3xl md:text-5xl text-white uppercase leading-none tracking-tight">
+            <h2 className="font-display font-black text-2xl sm:text-3xl md:text-5xl text-white uppercase leading-none tracking-tight">
               FEED DO <span className="text-[#94D2BD]">INSTAGRAM</span>
             </h2>
 
-            <p className="font-sans text-sm md:text-base text-[#94D2BD]/90 mt-1 font-medium leading-relaxed max-w-xl">
+            <p className="font-sans text-xs sm:text-sm md:text-base text-[#94D2BD]/90 mt-0.5 sm:mt-1 font-medium leading-relaxed max-w-xl">
               Últimas publicações e momentos direto de{' '}
               <a
                 href={SITE_INFO.instagramUrl}
@@ -305,12 +305,12 @@ export const Gallery: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 self-start md:self-end w-full md:w-auto">
+          <div className="flex flex-row flex-wrap items-center gap-2.5 sm:gap-3 self-start md:self-end w-auto mt-1 sm:mt-0">
             <a
               href={SITE_INFO.instagramUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-black/40 border-2 border-white/10 hover:border-[#EE9B00] rounded-2xl text-xs font-mono font-bold text-[#94D2BD] hover:text-[#EE9B00] transition-all cursor-pointer group shadow-chicano-sm shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-black/40 border border-white/10 sm:border-2 hover:border-[#EE9B00] rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-mono font-bold text-[#94D2BD] hover:text-[#EE9B00] transition-all cursor-pointer group shadow-chicano-sm w-auto shrink-0"
             >
               <InstagramIcon className="w-3.5 h-3.5" />
               <span>@elchicanofloripa</span>
@@ -321,11 +321,11 @@ export const Gallery: React.FC = () => {
               href={SITE_INFO.cardapioWebUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="relative overflow-hidden group inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-[#001219] shadow-chicano hover:-translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="relative overflow-hidden group inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 py-1.5 sm:px-5 sm:py-2.5 bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-[11px] sm:text-xs uppercase tracking-wider rounded-xl sm:rounded-2xl border border-[#001219] sm:border-2 shadow-chicano-sm sm:shadow-chicano hover:-translate-y-0.5 transition-all cursor-pointer w-auto shrink-0"
             >
               <span className="absolute inset-0 -translate-x-full animate-cta-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
               <ShoppingBag className="w-3.5 h-3.5 relative z-10" />
-              <span className="relative z-10">CardápioWeb</span>
+              <span className="relative z-10">Fazer Pedido</span>
             </a>
           </div>
         </div>

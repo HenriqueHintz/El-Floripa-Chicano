@@ -176,11 +176,11 @@ export const About: React.FC = () => {
 
           {/* ================================================================= */}
           {/* MOBILE VERSION (< 1024px): 100% ENQUADRADO NA TELA DO CELULAR     */}
-          {/* Ocupa a tela inteira sem necessidade de rolagem vertical          */}
+          {/* Espaçamento harmonioso e compacto entre cabeçalho, cards e botões */}
           {/* ================================================================= */}
-          <div className="block lg:hidden w-full text-left flex flex-col justify-between min-h-[88dvh] max-h-[94dvh]">
+          <div className="block lg:hidden w-full text-left flex flex-col justify-center gap-2.5 sm:gap-3 py-1">
             {/* Header Mobile Compacto */}
-            <div className="shrink-0 mb-1">
+            <div className="shrink-0">
               <span className="inline-block font-mono text-[10px] text-[#EE9B00] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-[#EE9B00]/10 border border-[#EE9B00]/20 mb-1">
                 Nossa Origem & Essência
               </span>
@@ -193,7 +193,7 @@ export const About: React.FC = () => {
             <div
               ref={mobileScrollRef}
               onScroll={handleMobileScroll}
-              className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory py-1 -mx-4 px-4 scrollbar-none touch-pan-y select-none my-auto"
+              className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory py-1 -mx-4 px-4 scrollbar-none touch-pan-y select-none"
               style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}
             >
               {CHAPTERS.map((ch, idx) => {

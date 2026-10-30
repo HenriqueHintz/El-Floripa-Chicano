@@ -5,11 +5,13 @@ import { getLiveMenuData, getLiveMenuDataAsync } from '../services/d1Api';
 import { subscribeRealtime } from '../utils/realtime';
 import { AmberCanvas } from './AmberCanvas';
 import { ProductModal } from './ProductModal';
+import { TrimmedImage } from './TrimmedImage';
 import { ShoppingBag, Eye, ExternalLink, ChevronLeft, ChevronRight, Search, X, Flame } from 'lucide-react';
 import { smoothScrollToTarget } from '../utils/scroll';
 
 export const MenuSection: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | number | 'all'>('all');
+  const [selectedCategoryName, setSelectedCategoryName] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
   const [isMobile, setIsMobile] = useState<boolean>(() => {
@@ -60,18 +62,32 @@ export const MenuSection: React.FC = () => {
     categoryTrackRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
   };
 
+  const handleSelectCategory = (id: string | number | 'all', name: string, targetEl?: HTMLElement | null) => {
+    setSelectedCategoryId(id);
+    setSelectedCategoryName(name);
+
+    if (targetEl && categoryTrackRef.current) {
+      const track = categoryTrackRef.current;
+      const trackRect = track.getBoundingClientRect();
+      const elRect = targetEl.getBoundingClientRect();
+      const scrollOffset = (elRect.left - trackRect.left) + track.scrollLeft - (track.clientWidth / 2) + (elRect.width / 2);
+      track.scrollTo({ left: scrollOffset, behavior: 'smooth' });
+    }
+  };
+
   // Reset page when category, search or device mode changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, searchQuery, isMobile]);
+  }, [selectedCategoryId, selectedCategoryName, searchQuery, isMobile]);
 
-  // Search & Category Filter
+  // Search & Category Filter - Exact ID and clean name matching
   const filteredProducts = useMemo(() => {
     return activeProducts.filter((prod) => {
-      // Category match
+      // Category match: exact ID or exact/trimmed category name match
       const matchesCategory =
-        selectedCategory === 'all' ||
-        prod.category.toLowerCase().includes(selectedCategory.toLowerCase());
+        selectedCategoryId === 'all' ||
+        (prod.categoryId && prod.categoryId === selectedCategoryId) ||
+        prod.category.trim().toLowerCase() === selectedCategoryName.trim().toLowerCase();
 
       // Search match (name or description)
       const query = searchQuery.trim().toLowerCase();
@@ -82,24 +98,24 @@ export const MenuSection: React.FC = () => {
 
       return matchesCategory && matchesSearch;
     });
-  }, [activeProducts, selectedCategory, searchQuery]);
+  }, [activeProducts, selectedCategoryId, selectedCategoryName, searchQuery]);
 
-  // Clean category display name
+  // Clean category display name matching live CardápioWeb catalogue
   const getCategoryDisplayName = (name: string) => {
     const lower = name.toLowerCase();
     if (lower === 'all') return 'Todos';
     if (lower.includes('combos')) return 'Combos';
+    if (lower.includes('burrito bowl')) return 'Bowls';
     if (lower.includes('burritos')) return 'Burritos';
-    if (lower.includes('bowl')) return 'Bowls';
     if (lower.includes('antojitos') || lower.includes('entradas')) return 'Entradas';
     if (lower.includes('tacos')) return 'Tacos';
     if (lower.includes('quesadilla')) return 'Quesadillas';
     if (lower.includes('veggie')) return 'Veggie';
-    if (lower.includes('salsas')) return 'Salsas';
+    if (lower.includes('salsas') || lower.includes('molhos')) return 'Salsas';
     if (lower.includes('postres') || lower.includes('sobremesa')) return 'Sobremesas';
     if (lower.includes('sucos')) return 'Sucos';
-    if (lower.includes('cervejas')) return 'Cervejas';
-    if (lower.includes('bebidas')) return 'Bebidas';
+    if (lower.includes('cerveja')) return 'Cervejas';
+    if (lower.includes('bebida') || lower.includes('refrigerante')) return 'Refrigerantes';
     return name.trim();
   };
 
@@ -154,7 +170,7 @@ export const MenuSection: React.FC = () => {
   return (
     <section
       id="products-section"
-      className="min-h-[100dvh] py-16 md:py-24 bg-[#001219] relative overflow-hidden flex flex-col justify-center"
+      className="min-h-[100dvh] pt-20 pb-6 sm:py-24 bg-[#001219] relative overflow-hidden flex flex-col justify-center"
     >
       {/* Background with subtle animation */}
       <div
@@ -168,23 +184,23 @@ export const MenuSection: React.FC = () => {
       {/* Atmospheric lighting */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-72 rounded-full bg-[#CA6702]/15 blur-[140px] pointer-events-none z-[1]" />
 
-      <div className="max-w-[92rem] mx-auto px-4 sm:px-8 lg:px-12 relative z-10 w-full my-auto">
+      <div className="max-w-[92rem] mx-auto px-3 sm:px-8 lg:px-12 relative z-10 w-full my-auto">
         
-        {/* Header & Title */}
-        <div className="flex flex-col items-center text-center gap-3.5 mb-8">
-          <h2 className="font-display font-black text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-white uppercase leading-none tracking-tight drop-shadow-[0_4px_20px_rgba(0,0,0,0.9)]">
+        {/* Header & Title - Compact on Mobile */}
+        <div className="flex flex-col items-center text-center gap-1 sm:gap-3.5 mb-2.5 sm:mb-8">
+          <h2 className="font-display font-black text-xl sm:text-4xl md:text-5xl lg:text-6xl text-white uppercase leading-none tracking-tight drop-shadow-[0_4px_20px_rgba(0,0,0,0.9)]">
             O CARDÁPIO <span className="text-[#EE9B00]">DO EL CHICANO</span>
           </h2>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-1">
-            <p className="font-warmth text-lg sm:text-xl md:text-2xl text-[#EE9B00] -rotate-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] max-w-2xl">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 mt-0.5 sm:mt-1">
+            <p className="font-warmth text-xs sm:text-xl md:text-2xl text-[#EE9B00] -rotate-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] max-w-2xl">
               Receitas artesanais preparadas na brasa com o autêntico sabor mexicano
             </p>
             <a
               href={SITE_INFO.cardapioWebUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="relative overflow-hidden group inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider rounded-xl border-2 border-[#001219] shadow-chicano hover:-translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="relative overflow-hidden group hidden sm:inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider rounded-xl border-2 border-[#001219] shadow-chicano hover:-translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
               <span className="absolute inset-0 -translate-x-full animate-cta-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
               <span className="relative z-10">FAZER PEDIDO ONLINE</span>
@@ -193,65 +209,62 @@ export const MenuSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Real-time Search Input Bar */}
-        <div className="relative max-w-lg mx-auto mb-6 px-2">
+        {/* Real-time Search Input Bar - Compact on Mobile */}
+        <div className="relative max-w-lg mx-auto mb-2 sm:mb-6 px-0.5 sm:px-2">
           <div className="relative flex items-center">
-            <Search className="w-4 h-4 text-[#EE9B00] absolute left-4 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#EE9B00] absolute left-3 sm:left-4 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar pratos, tacos, burritos, molhos..."
-              className="w-full bg-[#FAF5E8] border-3 border-[#001219] text-[#001219] placeholder-[#001219]/50 text-xs sm:text-sm font-sans font-semibold rounded-2xl pl-11 pr-10 py-3 shadow-chicano focus:outline-none focus:border-[#EE9B00] transition-all"
+              className="w-full bg-[#FAF5E8] border sm:border-3 border-[#001219] text-[#001219] placeholder-[#001219]/50 text-xs sm:text-sm font-sans font-semibold rounded-lg sm:rounded-2xl pl-8 sm:pl-11 pr-7 sm:pr-10 py-1.5 sm:py-3 shadow-chicano-sm sm:shadow-chicano focus:outline-none focus:border-[#EE9B00] transition-all"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3.5 p-1 rounded-lg text-[#001219]/60 hover:text-[#001219] transition-colors cursor-pointer"
+                className="absolute right-2.5 p-1 rounded-lg text-[#001219]/60 hover:text-[#001219] transition-colors cursor-pointer"
                 aria-label="Limpar busca"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               </button>
             )}
           </div>
         </div>
 
-        {/* Category Navigation Bar */}
-        <div className="relative max-w-6xl mx-auto mb-8 sm:mb-10 px-1 sm:px-2">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Category Navigation Bar - Compact on Mobile */}
+        <div className="relative max-w-6xl mx-auto mb-2 sm:mb-10 px-0.5 sm:px-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             
             {/* Left Scroll Arrow (Mobile only) */}
             <button
               type="button"
               onClick={() => scrollCategoryTrack('left')}
-              className="md:hidden shrink-0 w-8 h-9 rounded-xl bg-[#001f2d] hover:bg-[#EE9B00] text-[#94D2BD] hover:text-[#001219] border-2 border-white/15 hover:border-[#001219] flex items-center justify-center transition-all shadow-chicano-sm active:scale-90 cursor-pointer"
+              className="md:hidden shrink-0 w-6 h-6 rounded-md bg-[#001f2d] hover:bg-[#EE9B00] text-[#94D2BD] hover:text-[#001219] border border-white/15 hover:border-[#001219] flex items-center justify-center transition-all shadow-sm active:scale-90 cursor-pointer"
               aria-label="Rolar categorias para esquerda"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3 h-3" />
             </button>
 
-            {/* Scrollable Track */}
+            {/* Scrollable Track - Smooth horizontal-only scrolling without snap locks */}
             <div 
               ref={categoryTrackRef}
-              className="flex-1 flex flex-nowrap md:flex-wrap items-center md:justify-center gap-2 sm:gap-2.5 overflow-x-auto md:overflow-visible no-scrollbar py-2 px-1 scroll-smooth snap-x snap-mandatory"
+              className="flex-1 flex flex-nowrap md:flex-wrap items-center md:justify-center gap-1 sm:gap-2.5 overflow-x-auto md:overflow-visible no-scrollbar py-0.5 sm:py-2 px-0.5 scroll-smooth"
             >
               {/* 'Todos' Button */}
               <button
                 type="button"
-                onClick={(e) => {
-                  setSelectedCategory('all');
-                  e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                }}
-                className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer shrink-0 snap-start whitespace-nowrap border-2 flex items-center gap-1.5 ${
-                  selectedCategory === 'all'
+                onClick={(e) => handleSelectCategory('all', 'all', e.currentTarget)}
+                className={`px-2 sm:px-4 py-1 sm:py-2 rounded-md sm:rounded-xl text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer shrink-0 whitespace-nowrap border sm:border-2 flex items-center gap-1 sm:gap-1.5 ${
+                  selectedCategoryId === 'all'
                     ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-chicano-sm scale-102 font-black'
                     : 'bg-white/5 text-[#E9D8A6] border-white/10 hover:border-[#EE9B00]/60 hover:bg-white/10'
                 }`}
               >
                 <span>Todos</span>
-                <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
-                  selectedCategory === 'all' 
+                <span className={`px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded text-[8px] sm:text-[10px] font-black ${
+                  selectedCategoryId === 'all' 
                     ? 'bg-[#001219] text-[#EE9B00]' 
                     : 'bg-white/10 text-[#94D2BD]'
                 }`}>
@@ -262,24 +275,21 @@ export const MenuSection: React.FC = () => {
               {/* Individual Categories */}
               {activeCategories.map((cat) => {
                 const displayName = getCategoryDisplayName(cat.name);
-                const isSelected = selectedCategory === cat.name;
+                const isSelected = selectedCategoryId === cat.id;
 
                 return (
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={(e) => {
-                      setSelectedCategory(cat.name);
-                      e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                    }}
-                    className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer shrink-0 snap-start whitespace-nowrap border-2 flex items-center gap-1.5 ${
+                    onClick={(e) => handleSelectCategory(cat.id, cat.name, e.currentTarget)}
+                    className={`px-2 sm:px-4 py-1 sm:py-2 rounded-md sm:rounded-xl text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer shrink-0 whitespace-nowrap border sm:border-2 flex items-center gap-1 sm:gap-1.5 ${
                       isSelected
                         ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-chicano-sm scale-102 font-black'
                         : 'bg-white/5 text-[#E9D8A6] border-white/10 hover:border-[#EE9B00]/60 hover:bg-white/10'
                     }`}
                   >
                     <span>{displayName}</span>
-                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
+                    <span className={`px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded text-[8px] sm:text-[10px] font-black ${
                       isSelected 
                         ? 'bg-[#001219] text-[#EE9B00]' 
                         : 'bg-white/10 text-[#94D2BD]'
@@ -295,10 +305,10 @@ export const MenuSection: React.FC = () => {
             <button
               type="button"
               onClick={() => scrollCategoryTrack('right')}
-              className="md:hidden shrink-0 w-8 h-9 rounded-xl bg-[#001f2d] hover:bg-[#EE9B00] text-[#94D2BD] hover:text-[#001219] border-2 border-white/15 hover:border-[#001219] flex items-center justify-center transition-all shadow-chicano-sm active:scale-90 cursor-pointer"
+              className="md:hidden shrink-0 w-6 h-6 rounded-md bg-[#001f2d] hover:bg-[#EE9B00] text-[#94D2BD] hover:text-[#001219] border border-white/15 hover:border-[#001219] flex items-center justify-center transition-all shadow-sm active:scale-90 cursor-pointer"
               aria-label="Rolar categorias para direita"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3 h-3" />
             </button>
 
           </div>
@@ -308,7 +318,7 @@ export const MenuSection: React.FC = () => {
         <div id="menu-grid-top" className="scroll-mt-32" />
 
         {/* Top Info Bar (Item Count) */}
-        <div className="flex items-center justify-between mb-6 px-2 text-xs font-mono">
+        <div className="flex items-center justify-between mb-2 sm:mb-6 px-1 sm:px-2 text-[10px] sm:text-xs font-mono">
           <span className="text-[#94D2BD] font-bold">
             Mostrando {filteredProducts.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredProducts.length)} de {filteredProducts.length} pratos
           </span>
@@ -321,24 +331,25 @@ export const MenuSection: React.FC = () => {
 
         {/* Product Cards Grid */}
         {filteredProducts.length === 0 ? (
-          <div className="text-center py-16 px-6 bg-[#FAF5E8] border-4 border-[#001219] rounded-3xl max-w-md mx-auto shadow-chicano">
-            <Flame className="w-10 h-10 text-[#CA6702] mx-auto mb-3" />
-            <p className="font-display font-black text-xl text-[#001219] uppercase">Nenhum prato encontrado</p>
+          <div className="text-center py-10 sm:py-16 px-4 sm:px-6 bg-[#FAF5E8] border-2 sm:border-4 border-[#001219] rounded-2xl sm:rounded-3xl max-w-md mx-auto shadow-chicano-sm sm:shadow-chicano">
+            <Flame className="w-8 h-8 sm:w-10 sm:h-10 text-[#CA6702] mx-auto mb-2 sm:mb-3" />
+            <p className="font-display font-black text-lg sm:text-xl text-[#001219] uppercase">Nenhum prato encontrado</p>
             <p className="font-sans text-xs text-[#001219]/75 mt-1">Tente buscar por outro termo ou selecione outra categoria.</p>
             <button
               type="button"
               onClick={() => {
-                setSelectedCategory('all');
+                setSelectedCategoryId('all');
+                setSelectedCategoryName('all');
                 setSearchQuery('');
               }}
-              className="mt-4 px-4 py-2 bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white rounded-xl font-mono text-xs uppercase font-bold border-2 border-[#001219] cursor-pointer transition-colors shadow-chicano-sm"
+              className="mt-3 sm:mt-4 px-3.5 py-1.5 sm:px-4 sm:py-2 bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white rounded-lg sm:rounded-xl font-mono text-[11px] sm:text-xs uppercase font-bold border sm:border-2 border-[#001219] cursor-pointer transition-colors shadow-chicano-sm"
             >
               Limpar Filtros
             </button>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-8">
               {paginatedProducts.map((product) => {
                 const imgUrl = product.imageUrl || product.thumbnailUrl || product.image || '/images/products/el-chicano-246.webp';
 
@@ -346,83 +357,85 @@ export const MenuSection: React.FC = () => {
                   <div
                     key={product.id}
                     onClick={() => setActiveProduct(product)}
-                    className="group bg-[#FAF5E8] border-4 border-[#001219] rounded-3xl overflow-hidden shadow-chicano hover:shadow-chicano-lg hover:-translate-y-2 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col justify-between cursor-pointer will-change-transform"
+                    className="group bg-[#FAF5E8] border-2 sm:border-4 border-[#001219] rounded-xl sm:rounded-3xl overflow-hidden shadow-chicano-sm sm:shadow-chicano hover:shadow-chicano-lg hover:-translate-y-0.5 sm:hover:-translate-y-2 transition-all duration-300 flex flex-row sm:flex-col justify-between cursor-pointer will-change-transform h-[92px] sm:h-auto min-h-[92px] sm:min-h-0"
                   >
-                    <div>
-                      {/* Image Container with 16:10 ratio */}
-                      <div className="relative aspect-[16/10] bg-[#001219] overflow-hidden border-b-3 border-[#001219]">
-                        <img
-                          src={imgUrl}
-                          alt={product.name}
-                          loading="lazy"
-                          className="w-full h-full object-cover group-hover:scale-108 group-hover:brightness-105 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/images/products/el-chicano-246.webp';
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#001219]/70 via-transparent to-transparent pointer-events-none" />
+                    {/* Image Container: Left on mobile (larger 115px width and 92px height), Top on desktop (full width) */}
+                    <div className="relative w-[115px] sm:w-full h-full sm:aspect-[16/10] shrink-0 bg-[#001219] overflow-hidden border-r-2 sm:border-r-0 sm:border-b-3 border-[#001219] order-first">
+                      <TrimmedImage
+                        src={imgUrl}
+                        alt={product.name}
+                        className="w-full h-full object-cover object-center scale-[1.18] sm:scale-100 group-hover:scale-125 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/images/products/el-chicano-246.webp';
+                        }}
+                      />
+                      <div className="hidden sm:block absolute inset-0 bg-gradient-to-t from-[#001219]/70 via-transparent to-transparent pointer-events-none" />
 
-                        {/* Top Category Badge */}
-                        <div className="absolute top-3 left-3 z-10">
-                          <span className="px-2.5 py-1 rounded-full bg-[#001219]/80 backdrop-blur-md text-[#94D2BD] font-mono text-[9px] uppercase font-black tracking-wider border border-white/10">
-                            {product.category || 'Especialidade'}
-                          </span>
-                        </div>
-
-                        {/* Quick View Icon on Hover */}
-                        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-                          <span className="w-8 h-8 rounded-full bg-[#FAF5E8] text-[#001219] border-2 border-[#001219] flex items-center justify-center shadow-sm">
-                            <Eye className="w-4 h-4" />
-                          </span>
-                        </div>
+                      {/* Top Category Badge (Desktop only) */}
+                      <div className="hidden sm:block absolute top-2.5 left-2.5 sm:top-3 sm:left-3 z-10">
+                        <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-[#001219]/80 backdrop-blur-md text-[#94D2BD] font-mono text-[8px] sm:text-[9px] uppercase font-black tracking-wider border border-white/10">
+                          {product.category || 'Especialidade'}
+                        </span>
                       </div>
 
-                      {/* Card Content with Fixed Heights for Mathematical Alignment */}
-                      <div className="p-5 sm:p-6 text-left">
-                        <h3 className="font-display font-black text-xl text-[#001219] uppercase leading-tight group-hover:text-[#CA6702] transition-colors duration-300 min-h-[3rem] line-clamp-2">
-                          {product.name}
-                        </h3>
-
-                        <p className="font-sans text-xs text-[#001219]/75 mt-2 min-h-[2.4rem] line-clamp-2 leading-relaxed">
-                          {product.description || 'Preparado artesanalmente no fogo com ingredientes selecionados.'}
-                        </p>
+                      {/* Quick View Icon on Hover (Desktop only) */}
+                      <div className="hidden sm:block absolute top-2.5 right-2.5 sm:top-3 sm:right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                        <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#FAF5E8] text-[#001219] border-2 border-[#001219] flex items-center justify-center shadow-sm">
+                          <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </span>
                       </div>
                     </div>
 
-                    {/* Card Footer with Price and Pedir Agora Button */}
-                    <div className="px-5 pb-5 sm:px-6 sm:pb-6 pt-3 flex items-center justify-between border-t border-[#001219]/10 mt-auto">
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-mono uppercase tracking-widest text-[#001219]/50 font-black">
-                          Preço
-                        </span>
-                        <span className="font-mono font-black text-lg text-[#CA6702]">
-                          {formatPrice(product.price)}
-                        </span>
+                    {/* Content Column: Right on mobile (flex-1), Bottom on desktop */}
+                    <div className="flex-1 p-2.5 sm:p-6 text-left flex flex-col justify-between min-w-0 order-last h-full">
+                      <div>
+                        <h3 className="font-display font-black text-xs sm:text-xl text-[#001219] uppercase leading-tight sm:leading-snug group-hover:text-[#CA6702] transition-colors duration-200 line-clamp-2 sm:min-h-[3rem]">
+                          {product.name}
+                        </h3>
+
+                        {/* Description: HIDDEN on mobile (guarantees same height for all cards), visible on desktop */}
+                        <p className="hidden sm:block font-sans text-xs text-[#001219]/75 mt-2 line-clamp-2 leading-relaxed min-h-[2.4rem]">
+                          {product.description || 'Preparado artesanalmente no fogo com ingredientes selecionados.'}
+                        </p>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveProduct(product);
-                          }}
-                          className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#FAF5E8] text-[#001219] font-mono text-xs font-bold border-2 border-[#001219] shadow-chicano-sm transition-all"
-                          title="Ver detalhes do prato"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
+                      {/* Price & Action footer */}
+                      <div className="pt-0.5 sm:pt-3 flex items-center justify-between sm:border-t sm:border-[#001219]/10 mt-auto">
+                        <div className="flex flex-col">
+                          <span className="text-[7px] sm:text-[9px] font-mono uppercase tracking-widest text-[#001219]/50 font-black hidden sm:block">
+                            Preço
+                          </span>
+                          <span className="font-mono font-black text-xs sm:text-lg text-[#CA6702]">
+                            {formatPrice(product.price)}
+                          </span>
+                        </div>
 
-                        <a
-                          href={SITE_INFO.cardapioWebUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="px-3.5 py-1.5 rounded-xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-2 border-[#001219] shadow-chicano-sm hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <span>Pedir</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          {/* Quick view Eye button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveProduct(product);
+                            }}
+                            className="w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-white hover:bg-[#FAF5E8] text-[#001219] font-mono text-xs font-bold border border-[#001219] sm:border-2 shadow-sm flex items-center justify-center transition-all cursor-pointer"
+                            title="Ver prato ampliado"
+                          >
+                            <Eye className="w-3.5 h-3.5 sm:w-3.5 sm:h-3.5 stroke-[2.2px]" />
+                          </button>
+
+                          {/* Fazer Pedido button */}
+                          <a
+                            href={SITE_INFO.cardapioWebUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-7 sm:h-auto px-2 py-0.5 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-[10px] sm:text-xs uppercase tracking-wider border border-[#001219] sm:border-2 shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center gap-1 sm:gap-1.5 cursor-pointer"
+                          >
+                            <span>Pedir</span>
+                            <ExternalLink className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
+                          </a>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -430,21 +443,21 @@ export const MenuSection: React.FC = () => {
               })}
             </div>
 
-            {/* Pagination Controls - Otimizado para Mobile e Desktop */}
+            {/* Pagination Controls - Compact on Mobile */}
             {totalPages > 1 && (
-              <div className="mt-8 sm:mt-12 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+              <div className="mt-3 sm:mt-12 flex flex-wrap items-center justify-center gap-1 sm:gap-3">
                 <button
                   type="button"
                   disabled={currentPage === 1}
                   onClick={() => handlePageChange(currentPage - 1)}
-                  className={`inline-flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border-2 font-mono text-xs font-bold uppercase transition-all ${
+                  className={`inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl border sm:border-2 font-mono text-[11px] sm:text-xs font-bold uppercase transition-all ${
                     currentPage === 1
                       ? 'opacity-30 border-white/10 text-white/40 cursor-not-allowed bg-transparent'
-                      : 'bg-[#FAF5E8] text-[#001219] border-[#001219] shadow-chicano-sm hover:-translate-x-0.5 cursor-pointer hover:bg-[#EE9B00]'
+                      : 'bg-[#FAF5E8] text-[#001219] border-[#001219] shadow-sm sm:shadow-chicano-sm hover:-translate-x-0.5 cursor-pointer hover:bg-[#EE9B00]'
                   }`}
                   aria-label="Página anterior"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   <span className="hidden xs:inline">Anterior</span>
                 </button>
 
@@ -452,7 +465,7 @@ export const MenuSection: React.FC = () => {
                   {pageNumbers.map((page, idx) => {
                     if (page === '...') {
                       return (
-                        <span key={`dots-${idx}`} className="px-1 text-white/40 font-mono text-xs">
+                        <span key={`dots-${idx}`} className="px-1 text-white/40 font-mono text-[11px] sm:text-xs">
                           ...
                         </span>
                       );
@@ -465,9 +478,9 @@ export const MenuSection: React.FC = () => {
                         key={numPage}
                         type="button"
                         onClick={() => handlePageChange(numPage)}
-                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl font-mono text-xs font-bold border-2 transition-all cursor-pointer flex items-center justify-center ${
+                        className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl font-mono text-[11px] sm:text-xs font-bold border sm:border-2 transition-all cursor-pointer flex items-center justify-center ${
                           isActive
-                            ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-chicano-sm scale-105 sm:scale-110 font-black'
+                            ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-sm sm:shadow-chicano-sm scale-105 font-black'
                             : 'bg-white/5 text-[#E9D8A6] border-white/15 hover:border-[#EE9B00] hover:text-white'
                         }`}
                       >
@@ -481,15 +494,15 @@ export const MenuSection: React.FC = () => {
                   type="button"
                   disabled={currentPage === totalPages}
                   onClick={() => handlePageChange(currentPage + 1)}
-                  className={`inline-flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border-2 font-mono text-xs font-bold uppercase transition-all ${
+                  className={`inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl border sm:border-2 font-mono text-[11px] sm:text-xs font-bold uppercase transition-all ${
                     currentPage === totalPages
                       ? 'opacity-30 border-white/10 text-white/40 cursor-not-allowed bg-transparent'
-                      : 'bg-[#FAF5E8] text-[#001219] border-[#001219] shadow-chicano-sm hover:translate-x-0.5 cursor-pointer hover:bg-[#EE9B00]'
+                      : 'bg-[#FAF5E8] text-[#001219] border-[#001219] shadow-sm sm:shadow-chicano-sm hover:translate-x-0.5 cursor-pointer hover:bg-[#EE9B00]'
                   }`}
                   aria-label="Próxima página"
                 >
                   <span className="hidden xs:inline">Próxima</span>
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               </div>
             )}
