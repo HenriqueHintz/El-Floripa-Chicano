@@ -44,10 +44,16 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
       onMouseLeave={handleMouseLeave}
       className="relative min-h-[100dvh] flex flex-col justify-between sm:justify-center items-stretch sm:items-center bg-[#001219] pt-24 sm:pt-32 pb-4 sm:pb-24 overflow-hidden selection:bg-[#EE9B00] selection:text-[#001219]"
     >
-      {/* 1. Imagem de Fundo 100% Colorida, Autêntica e com Movimento Suave Ken Burns */}
+      {/* 1a. Imagem de Fundo Desktop (>= 640px) com Ken Burns */}
       <div
-        className="absolute inset-0 bg-cover bg-center sm:bg-[center_top_15%] md:bg-center pointer-events-none z-0 animate-ken-burns opacity-85 filter contrast-105 saturate-110"
+        className="hidden sm:block absolute inset-0 bg-cover sm:bg-[center_top_15%] md:bg-center pointer-events-none z-0 animate-ken-burns opacity-85 filter contrast-105 saturate-110"
         style={{ backgroundImage: "url('/images/logos/hero.webp')" }}
+      />
+
+      {/* 1b. Nova Imagem de Fundo Realista Exclusiva Mobile (< 640px) Enquadrada para Celulares */}
+      <div
+        className="block sm:hidden absolute inset-0 bg-cover bg-[center_top_22%] pointer-events-none z-0 opacity-90 filter contrast-105 saturate-105"
+        style={{ backgroundImage: "url('/images/logos/hero-mobile.webp')" }}
       />
 
       {/* 2. Textura Rupestre de Fundo Muito Suave */}
@@ -63,8 +69,8 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
       {/* Sombra escura no topo para a barra de navegação */}
       <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none z-[2]" />
       
-      {/* Sombra lateral para contraste do texto */}
-      <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-transparent pointer-events-none z-[2]" />
+      {/* Sombra de contraste calibrada: vertical no mobile para valorizar a foto, lateral no desktop */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/30 to-black/85 sm:bg-gradient-to-r sm:from-black/85 sm:via-black/50 sm:to-transparent pointer-events-none z-[2]" />
 
       {/* Sombra inferior suave para a transição com a próxima seção */}
       <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-[#001219] via-black/60 to-transparent pointer-events-none z-[2]" />
