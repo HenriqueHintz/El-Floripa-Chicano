@@ -65,7 +65,7 @@ export interface Product {
   status?: string;
   availableFor?: string[];
   addOns?: ProductAddOn[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface MenuCategory {
@@ -75,7 +75,7 @@ export interface MenuCategory {
   position?: number;
   imageUrl?: string | null;
   items: Product[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface GalleryItem {

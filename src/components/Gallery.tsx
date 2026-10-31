@@ -185,6 +185,7 @@ export const Gallery: React.FC = () => {
                   src={post.media_url}
                   alt={post.caption || 'Momento El Chicano Floripa'}
                   loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover group-hover:scale-105 group-hover:brightness-105 transition-all duration-700 ease-out"
                 />
               )}
@@ -193,19 +194,19 @@ export const Gallery: React.FC = () => {
 
               {/* Video Badge / Play Icon */}
               {post.type === 'video' && (
-                <div className="absolute inset-0 m-auto w-12 h-12 rounded-full bg-[#EE9B00] text-[#001219] border-2 border-[#001219] shadow-md flex items-center justify-center group-hover:scale-110 group-hover:bg-[#CA6702] group-hover:text-white transition-all duration-300 pointer-events-none z-20">
-                  <Play className="w-5 h-5 ml-0.5 fill-current" />
+                <div className="absolute inset-0 m-auto w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#EE9B00] text-[#001219] border-2 border-[#001219] shadow-md flex items-center justify-center group-hover:scale-110 group-hover:bg-[#CA6702] group-hover:text-white transition-all duration-300 pointer-events-none z-20">
+                  <Play className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5 fill-current" />
                 </div>
               )}
             </div>
 
             {/* Bottom Caption & Instagram Icon - Barra azul mais baixa e semi-transparente */}
-            <div className="px-3.5 py-2.5 bg-[#001219]/65 backdrop-blur-md flex items-center justify-between gap-2.5 text-left border-t border-white/10 z-20">
-              <p className="font-sans text-xs sm:text-[13px] text-[#FAF5E8]/95 font-medium line-clamp-1 flex-1 leading-tight">
+            <div className="px-3 py-2 sm:px-3.5 sm:py-2.5 bg-[#001219]/65 backdrop-blur-md flex items-center justify-between gap-2 text-left border-t border-white/10 z-20">
+              <p className="font-sans text-[11px] sm:text-[13px] text-[#FAF5E8]/95 font-medium line-clamp-1 flex-1 leading-tight">
                 {post.caption || 'Momento El Chicano Floripa'}
               </p>
-              <div className="w-6 h-6 rounded-full bg-white/10 text-[#E9D8A6] flex items-center justify-center group-hover:bg-[#EE9B00] group-hover:text-[#001219] transition-all shrink-0">
-                <InstagramIcon className="w-3 h-3" />
+              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/10 text-[#E9D8A6] flex items-center justify-center group-hover:bg-[#EE9B00] group-hover:text-[#001219] transition-all shrink-0">
+                <InstagramIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               </div>
             </div>
           </div>
@@ -226,12 +227,12 @@ export const Gallery: React.FC = () => {
 
         <div className="relative w-full h-full rounded-[14px] overflow-hidden bg-[#001219]/70 backdrop-blur-sm flex flex-col justify-between">
           {/* Empty Structural Media Box */}
-          <div className="relative aspect-[4/3] bg-gradient-to-br from-[#001f2d]/60 via-[#001824]/60 to-[#001219]/80 overflow-hidden flex flex-col items-center justify-center p-5 text-center">
-            <div className="absolute inset-2.5 border-2 border-dashed border-[#94D2BD]/15 rounded-xl pointer-events-none group-hover:border-[#EE9B00]/40 transition-colors duration-400" />
+          <div className="relative aspect-[4/3] bg-gradient-to-br from-[#001f2d]/60 via-[#001824]/60 to-[#001219]/80 overflow-hidden flex flex-col items-center justify-center p-3.5 sm:p-5 text-center">
+            <div className="absolute inset-2 sm:inset-2.5 border-2 border-dashed border-[#94D2BD]/15 rounded-xl pointer-events-none group-hover:border-[#EE9B00]/40 transition-colors duration-400" />
 
             {/* Center Instagram Icon */}
-            <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 text-[#94D2BD] flex items-center justify-center shadow-md group-hover:scale-110 group-hover:bg-[#EE9B00] group-hover:text-[#001219] group-hover:border-[#001219] transition-all duration-400 ease-out">
-              <InstagramIcon className="w-5 h-5" />
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white/5 border border-white/10 text-[#94D2BD] flex items-center justify-center shadow-md group-hover:scale-110 group-hover:bg-[#EE9B00] group-hover:text-[#001219] group-hover:border-[#001219] transition-all duration-400 ease-out">
+              <InstagramIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
 
             <p className="font-mono text-[10px] text-[#94D2BD]/80 uppercase tracking-wider font-bold mt-2.5 group-hover:text-white transition-colors">
@@ -243,14 +244,14 @@ export const Gallery: React.FC = () => {
           </div>
 
           {/* Bottom Bar - Barra azul mais baixa e semi-transparente */}
-          <div className="px-3.5 py-2.5 bg-[#001219]/65 backdrop-blur-md flex items-center justify-between gap-2.5 text-left border-t border-white/10">
-            <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#E9D8A6]/70 group-hover:text-[#EE9B00] transition-colors leading-tight">
-              <InstagramIcon className="w-3 h-3" />
+          <div className="px-3 py-2 sm:px-3.5 sm:py-2.5 bg-[#001219]/65 backdrop-blur-md flex items-center justify-between gap-2 text-left border-t border-white/10">
+            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono font-bold text-[#E9D8A6]/70 group-hover:text-[#EE9B00] transition-colors leading-tight">
+              <InstagramIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               <span>@elchicanofloripa</span>
             </div>
 
-            <div className="w-6 h-6 rounded-full bg-white/10 text-white/60 flex items-center justify-center group-hover:bg-[#EE9B00] group-hover:text-[#001219] transition-all shrink-0">
-              <ExternalLink className="w-3 h-3" />
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/10 text-white/60 flex items-center justify-center group-hover:bg-[#EE9B00] group-hover:text-[#001219] transition-all shrink-0">
+              <ExternalLink className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
             </div>
           </div>
         </div>
@@ -330,9 +331,9 @@ export const Gallery: React.FC = () => {
           </div>
         </div>
 
-        {/* Mobile View: 3 items per page with Pagination */}
+        {/* Mobile View: 3 items per page with Pagination - Cards compactos centralizados */}
         <div className="block sm:hidden">
-          <div className="grid grid-cols-1 gap-5">
+          <div className="grid grid-cols-1 gap-4 max-w-[270px] mx-auto">
             {mobileCards.map((card) => renderCard(card))}
           </div>
 
@@ -397,10 +398,10 @@ export const Gallery: React.FC = () => {
         />
       )}
 
-      {/* Immersive Transition to Units */}
-      <div className="absolute bottom-0 left-0 right-0 h-36 bg-gradient-to-b from-transparent via-[#003843]/60 to-[#004754]/50 pointer-events-none z-[2]" />
-      <div className="section-divider-cool" />
-      <div className="section-divider-glow-cool" />
+      {/* Immersive Transition to Units (Desktop only; mobile divider owned by Units) */}
+      <div className="hidden sm:block absolute bottom-0 left-0 right-0 h-36 bg-gradient-to-b from-transparent via-[#003843]/60 to-[#004754]/50 pointer-events-none z-[2]" />
+      <div className="hidden sm:block section-divider-cool" />
+      <div className="hidden sm:block section-divider-glow-cool" />
     </section>
   );
 };

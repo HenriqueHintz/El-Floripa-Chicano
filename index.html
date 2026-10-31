@@ -25,8 +25,9 @@
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="canonical" href="https://elchicano.com.br/" />
 
-    <!-- Preload Hero Assets -->
-    <link rel="preload" as="image" href="/images/logos/hero.webp" fetchpriority="high" />
+    <!-- Preload Hero Assets Responsive (Desktop & Mobile) -->
+    <link rel="preload" as="image" href="/images/logos/hero.webp" media="(min-width: 640px)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/images/logos/hero-mobile.webp" media="(max-width: 639.98px)" fetchpriority="high" />
 
     <!-- Open Graph / Social Media -->
     <meta property="og:type" content="website" />
@@ -48,6 +49,8 @@
     <meta name="twitter:image" content="https://elchicano.com.br/images/logos/hero.webp" />
 
     <!-- Google Fonts Typography: Lilita One, Sora, Caveat, Outfit -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Lilita+One&family=Outfit:wght@400;500;600;700;900&family=Sora:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />

@@ -184,6 +184,7 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
           alt="Personagem El Chicano"
           className="w-full h-auto object-contain filter drop-shadow-[0_15px_35px_rgba(0,0,0,0.9)] translate-y-1 sm:translate-y-2"
           loading="eager"
+          decoding="async"
         />
       </div>
 

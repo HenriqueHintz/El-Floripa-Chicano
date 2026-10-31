@@ -7,10 +7,17 @@ export const FloatingActions: React.FC = () => {
   const [showTop, setShowTop] = useState(false);
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setShowTop(window.scrollY > 300);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setShowTop(window.scrollY > 300);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -25,8 +32,8 @@ export const FloatingActions: React.FC = () => {
         href={SITE_INFO.whatsappFloripaUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-[#25D366] text-white border-2 sm:border-3 border-[#001219] flex items-center justify-center shadow-[4px_4px_0px_#000] hover:scale-110 hover:shadow-[6px_6px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer relative group"
-        aria-label="Pedir no WhatsApp"
+        className="w-12 h-12 sm:w-13 sm:h-13 rounded-2xl bg-[#25D366] text-white border-2 sm:border-3 border-[#001219] flex items-center justify-center shadow-[4px_4px_0px_#000] hover:scale-110 hover:shadow-[6px_6px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer relative group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        aria-label="Pedir no WhatsApp Floripa"
       >
         <span className="absolute inset-0 rounded-2xl bg-[#25D366]/40 animate-ping pointer-events-none" />
         <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 fill-current relative z-10" />
@@ -40,8 +47,8 @@ export const FloatingActions: React.FC = () => {
         href={SITE_INFO.cardapioWebUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-[#EE9B00] text-[#001219] border-2 sm:border-3 border-[#001219] flex items-center justify-center shadow-[4px_4px_0px_#000] hover:scale-110 hover:shadow-[6px_6px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer relative group"
-        aria-label="Fazer Pedido Online"
+        className="w-12 h-12 sm:w-13 sm:h-13 rounded-2xl bg-[#EE9B00] text-[#001219] border-2 sm:border-3 border-[#001219] flex items-center justify-center shadow-[4px_4px_0px_#000] hover:scale-110 hover:shadow-[6px_6px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer relative group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        aria-label="Fazer Pedido Online no CardápioWeb"
       >
         <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 relative z-10" />
         <span className="absolute right-16 px-3 py-1.5 rounded-xl bg-[#001219] text-white text-[10px] font-mono uppercase tracking-wider font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-xl border-2 border-white/10">
@@ -54,8 +61,8 @@ export const FloatingActions: React.FC = () => {
         <button
           type="button"
           onClick={scrollToTop}
-          className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-[#FAF5E8] border-2 sm:border-3 border-[#001219] text-[#001219] flex items-center justify-center shadow-[4px_4px_0px_#000] hover:scale-110 hover:shadow-[6px_6px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer relative group animate-in fade-in zoom-in duration-200"
-          aria-label="Voltar ao topo"
+          className="w-12 h-12 sm:w-13 sm:h-13 rounded-2xl bg-[#FAF5E8] border-2 sm:border-3 border-[#001219] text-[#001219] flex items-center justify-center shadow-[4px_4px_0px_#000] hover:scale-110 hover:shadow-[6px_6px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer relative group animate-in fade-in zoom-in duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
+          aria-label="Voltar ao topo da página"
         >
           <ArrowUp className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5px]" />
           <span className="absolute right-16 px-3 py-1.5 rounded-xl bg-[#001219] text-white text-[10px] font-mono uppercase tracking-wider font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-xl border-2 border-white/10">

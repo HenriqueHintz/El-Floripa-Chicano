@@ -34,3 +34,4 @@ CREATE TABLE IF NOT EXISTS gallery_posts (
 CREATE INDEX IF NOT EXISTS idx_leads_created ON franchise_leads(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON franchise_leads(status);
 CREATE INDEX IF NOT EXISTS idx_gallery_slot ON gallery_posts(slot_number);
+CREATE INDEX IF NOT EXISTS idx_gallery_active_slot ON gallery_posts(is_active, slot_number);

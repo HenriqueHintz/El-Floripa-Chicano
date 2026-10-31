@@ -86,7 +86,7 @@ export const ProductModal = ({ product, onClose }: ProductModalProps) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="product-modal-name"
-        className={`w-full ${getContainerMaxWidth()} bg-[#FAF5E8] border-3 sm:border-4 border-[#001219] rounded-[2rem] sm:rounded-[2.5rem] shadow-[12px_12px_0px_0px_#001219] overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200 transition-all ease-[cubic-bezier(0.16,1,0.3,1)] max-h-[94vh]`}
+        className={`w-full ${getContainerMaxWidth()} bg-[#FAF5E8] border-3 sm:border-4 border-[#001219] rounded-[2rem] sm:rounded-[2.5rem] shadow-[12px_12px_0px_0px_#001219] overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200 transition-all ease-[cubic-bezier(0.16,1,0.3,1)] max-h-[92dvh] sm:max-h-[94vh] overflow-y-auto`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Gradient Bar */}
@@ -96,8 +96,8 @@ export const ProductModal = ({ product, onClose }: ProductModalProps) => {
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-3.5 right-3.5 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#001219] text-white hover:bg-[#EE9B00] hover:text-[#001219] border-2 border-[#001219] flex items-center justify-center transition-all shadow-chicano-sm hover:scale-105 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
-          aria-label="Fechar detalhes"
+          className="absolute top-3.5 right-3.5 z-30 w-11 h-11 sm:w-10 sm:h-10 min-w-[44px] min-h-[44px] rounded-full bg-[#001219] text-white hover:bg-[#EE9B00] hover:text-[#001219] border-2 border-[#001219] flex items-center justify-center transition-all shadow-chicano-sm hover:scale-105 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
+          aria-label="Fechar detalhes do produto"
         >
           <X className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>

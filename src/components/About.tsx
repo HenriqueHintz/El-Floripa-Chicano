@@ -82,7 +82,7 @@ export const About: React.FC = () => {
     };
 
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
+    window.addEventListener('resize', onScroll, { passive: true });
     handleScroll();
 
     return () => {
@@ -236,6 +236,7 @@ export const About: React.FC = () => {
                         src={ch.image}
                         alt={ch.alt}
                         loading={idx === 0 ? 'eager' : 'lazy'}
+                        decoding="async"
                         className="w-full h-full object-contain object-center"
                       />
                     </div>
@@ -391,6 +392,7 @@ export const About: React.FC = () => {
                       src={ch.image}
                       alt={ch.alt}
                       loading={idx === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
                       className={`absolute inset-0 w-full h-full object-cover object-center transition-all duration-700 ease-out ${
                         idx === desktopIdx
                           ? 'opacity-100 scale-100 z-10'

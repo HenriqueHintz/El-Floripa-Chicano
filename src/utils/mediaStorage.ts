@@ -361,11 +361,14 @@ export function purgeLegacyLocalStorageBloat(): void {
       try {
         const posts = JSON.parse(galleryRaw);
         if (Array.isArray(posts)) {
-          const sanitized = posts.map((p: any) => ({
-            ...p,
-            media_url: p.media_url && !p.media_url.startsWith('data:') && !p.media_url.startsWith('blob:') ? p.media_url : '',
-            thumbnail_url: '',
-          }));
+          const sanitized = posts.map((p: Record<string, unknown>) => {
+            const mediaUrl = typeof p.media_url === 'string' ? p.media_url : '';
+            return {
+              ...p,
+              media_url: mediaUrl && !mediaUrl.startsWith('data:') && !mediaUrl.startsWith('blob:') ? mediaUrl : '',
+              thumbnail_url: '',
+            };
+          });
           localStorage.setItem('elchicano_gallery_posts_store', JSON.stringify(sanitized));
         }
       } catch {

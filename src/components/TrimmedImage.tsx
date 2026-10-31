@@ -160,6 +160,7 @@ export const TrimmedImage: React.FC<TrimmedImageProps> = ({
       src={displaySrc}
       alt={alt}
       loading="lazy"
+      decoding="async"
       className={className}
       onLoad={onLoad}
       onError={onError}

@@ -26,10 +26,17 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
 
   useEffect(() => {
     setIsAudioActive(ambientAudio.getStatus());
+    let ticking = false;
     const handleScroll = () => {
-      setScrolled(window.scrollY > 40);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 40);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -148,7 +155,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={toggleAudio}
-              className={`h-9 px-2.5 rounded-xl border flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase transition-all cursor-pointer active:scale-95 ${
+              className={`h-11 px-3 min-h-[44px] rounded-xl border flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00] ${
                 isAudioActive
                   ? 'bg-[#EE9B00] text-[#001219] border-[#EE9B00] scale-102'
                   : 'bg-white/10 text-[#E9D8A6] border-white/15 hover:border-[#EE9B00] hover:text-white'
@@ -177,7 +184,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="h-9 w-9 flex items-center justify-center rounded-xl bg-white/10 border border-white/15 text-[#E9D8A6] hover:text-[#EE9B00] hover:border-[#EE9B00] active:scale-95 transition-all cursor-pointer"
+              className="h-11 w-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white/10 border border-white/15 text-[#E9D8A6] hover:text-[#EE9B00] hover:border-[#EE9B00] active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
               aria-label="Abrir menu de navegação"
             >
               <Menu className="w-5 h-5" />
@@ -217,7 +224,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="h-10 w-10 flex items-center justify-center text-[#E9D8A6] hover:text-[#EE9B00] hover:bg-white/5 active:scale-95 transition-all rounded-xl border border-white/15 cursor-pointer shrink-0 ml-2"
+              className="h-11 w-11 min-h-[44px] min-w-[44px] flex items-center justify-center text-[#E9D8A6] hover:text-[#EE9B00] hover:bg-white/5 active:scale-95 transition-all rounded-xl border border-white/15 cursor-pointer shrink-0 ml-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
               aria-label="Fechar menu"
             >
               <X className="w-6 h-6" />

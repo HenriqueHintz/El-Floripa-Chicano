@@ -6,18 +6,27 @@ export const TurquoiseCanvas = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
     let animId: number | null = null;
+    let isIntersecting = false;
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
+    let resizeTimer: number | undefined;
     const handleResize = () => {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
+      clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        if (!canvas) return;
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      }, 150);
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize, { passive: true });
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = window.innerWidth < 640;
 
     class Particle {
       x: number;
@@ -69,14 +78,14 @@ export const TurquoiseCanvas = () => {
       }
     }
 
+    const count = isMobile ? 14 : 24;
     const particles: Particle[] = [];
-    const count = 24;
     for (let i = 0; i < count; i++) {
       particles.push(new Particle());
     }
 
     const render = () => {
-      if (document.hidden) {
+      if (document.hidden || !isIntersecting) {
         animId = null;
         return;
       }
@@ -96,7 +105,12 @@ export const TurquoiseCanvas = () => {
     };
 
     const startAnimation = () => {
-      if (animId === null && !document.hidden) {
+      if (prefersReducedMotion) {
+        ctx.clearRect(0, 0, width, height);
+        particles.forEach((p) => p.draw());
+        return;
+      }
+      if (animId === null && !document.hidden && isIntersecting) {
         animId = requestAnimationFrame(render);
       }
     };
@@ -111,18 +125,40 @@ export const TurquoiseCanvas = () => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         stopAnimation();
-      } else {
+      } else if (isIntersecting) {
         startAnimation();
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    let observer: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== 'undefined') {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          isIntersecting = !!entry?.isIntersecting;
+          if (isIntersecting) {
+            startAnimation();
+          } else {
+            stopAnimation();
+          }
+        },
+        { threshold: 0.05 }
+      );
+      observer.observe(canvas);
+    } else {
+      isIntersecting = true;
+      startAnimation();
+    }
 
-    startAnimation();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('resize', handleResize);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearTimeout(resizeTimer);
+      if (observer) {
+        observer.disconnect();
+      }
       stopAnimation();
     };
   }, []);

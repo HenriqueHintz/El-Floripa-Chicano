@@ -21,6 +21,9 @@ export default defineConfig({
           if (id.includes('node_modules/clsx/') || id.includes('node_modules/tailwind-merge/')) {
             return 'vendor-utils';
           }
+          if (id.includes('src/data/menu.ts')) {
+            return 'menu-data';
+          }
         }
       }
     }

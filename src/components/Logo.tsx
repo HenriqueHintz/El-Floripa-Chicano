@@ -16,6 +16,7 @@ export const Logo: React.FC<LogoProps> = ({
       <img 
         src="/images/logos/logo.webp" 
         alt="El Floripa Chicano Mexican Food" 
+        decoding="async"
         className={`${className} w-auto object-contain`} 
       />
     );

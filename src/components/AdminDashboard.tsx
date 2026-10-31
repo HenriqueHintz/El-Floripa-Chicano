@@ -202,10 +202,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
           message: res.error || 'Falha ao sincronizar com CardápioWeb. Verifique sua conexão e tente novamente.'
         });
       }
-    } catch (err: any) {
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Falha inesperada.';
       setSyncStatusNote({
         type: 'error',
-        message: `Erro na sincronização: ${err?.message || 'Falha inesperada.'}`
+        message: `Erro na sincronização: ${errMsg}`
       });
     } finally {
       setIsSyncingMenu(false);
@@ -268,8 +269,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         message: 'Senha alterada com sucesso! O novo hash PBKDF2 com salt aleatório foi registrado com segurança.' 
       });
       setIsUpdatingPwd(false);
-    } catch (err: any) {
-      setPwdStatus({ type: 'error', message: err?.message || 'Erro ao atualizar senha.' });
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Erro ao atualizar senha.';
+      setPwdStatus({ type: 'error', message: errMsg });
       setIsUpdatingPwd(false);
     }
   };
@@ -312,7 +314,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
 
   const handleStatusChange = async (id: number | string, newStatus: string) => {
     await updateFranchiseLeadStatus(id, newStatus);
-    setLeads((prev) => prev.map((l) => (String(l.id) === String(id) ? { ...l, status: newStatus as any } : l)));
+    setLeads((prev) => prev.map((l) => (String(l.id) === String(id) ? { ...l, status: newStatus as FranchiseLead['status'] } : l)));
   };
 
   const handleDeleteLead = async (id: number | string, name?: string) => {
@@ -424,9 +426,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
 
       setSaveStatus(`Slot #${targetSlot} salvo e ativo no site!`);
       setTimeout(() => setSaveStatus(''), 4000);
-    } catch (err: any) {
+    } catch (err) {
       console.error('File upload error:', err);
-      setSlotFileNote(`Erro ao importar: ${err?.message || 'Tente novamente'}`);
+      const errMsg = err instanceof Error ? err.message : 'Tente novamente';
+      setSlotFileNote(`Erro ao importar: ${errMsg}`);
     } finally {
       setIsUploadingSlot(false);
       e.target.value = '';
@@ -461,7 +464,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       setVideoFileNote(`Vídeo carregado e salvo: ${file.name} (${sizeMb} MB)`);
       setVideoSaveStatus('Vídeo ativo no site!');
       setTimeout(() => setVideoSaveStatus(''), 4000);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Video upload error:', err);
       setVideoFileNote('Erro ao importar vídeo. Tente outro arquivo.');
     } finally {
@@ -492,7 +495,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       setPosterFileNote(`Capa importada e salva: ${file.name} (${sizeMb} MB)`);
       setVideoSaveStatus('Capa atualizada no site!');
       setTimeout(() => setVideoSaveStatus(''), 4000);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Poster upload error:', err);
       setPosterFileNote('Erro ao importar capa.');
     } finally {

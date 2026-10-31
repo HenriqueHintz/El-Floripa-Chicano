@@ -124,12 +124,13 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
 
             {/* Username Input */}
             <div>
-              <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
+              <label htmlFor="admin-username" className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
                 Identificação do Administrador
               </label>
               <div className="relative">
                 <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#001219]/50" />
                 <input
+                  id="admin-username"
                   type="text"
                   required
                   autoComplete="username"
@@ -144,12 +145,13 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
 
             {/* Password Input */}
             <div>
-              <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
+              <label htmlFor="admin-password" className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1.5">
                 Chave Secreta de Acesso
               </label>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#001219]/50" />
                 <input
+                  id="admin-password"
                   type="password"
                   required
                   autoComplete="current-password"

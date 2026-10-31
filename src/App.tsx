@@ -2,16 +2,27 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { About } from './components/About';
-import { MenuSection } from './components/MenuSection';
 import { Respiro } from './components/Respiro';
-import { Gallery } from './components/Gallery';
-import { Units } from './components/Units';
-import { Franchise } from './components/Franchise';
-import { Contact } from './components/Contact';
 import { Footer } from './components/Footer';
 import { FloatingActions } from './components/FloatingActions';
 import { Preloader } from './components/Preloader';
 import { smoothScrollToTarget } from './utils/scroll';
+
+const MenuSection = lazy(() =>
+  import('./components/MenuSection').then((m) => ({ default: m.MenuSection }))
+);
+const Gallery = lazy(() =>
+  import('./components/Gallery').then((m) => ({ default: m.Gallery }))
+);
+const Units = lazy(() =>
+  import('./components/Units').then((m) => ({ default: m.Units }))
+);
+const Franchise = lazy(() =>
+  import('./components/Franchise').then((m) => ({ default: m.Franchise }))
+);
+const Contact = lazy(() =>
+  import('./components/Contact').then((m) => ({ default: m.Contact }))
+);
 
 const FranchisePage = lazy(() =>
   import('./components/FranchisePage').then((m) => ({ default: m.FranchisePage }))
@@ -118,6 +129,14 @@ export function App() {
       {/* Atmospheric Preloader */}
       {showPreloader && <Preloader onFinish={handlePreloaderFinish} />}
 
+      {/* Skip to Main Content Link for Keyboard and Screen Reader Accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2.5 focus:bg-[#EE9B00] focus:text-[#001219] focus:font-bold focus:rounded-xl focus:shadow-[4px_4px_0px_#000] focus:border-2 focus:border-[#001219] focus:outline-none"
+      >
+        Pular para o conteúdo principal
+      </a>
+
       {/* Main Floating Navigation Header */}
       <Header onNavigate={handleNavigate} />
 
@@ -130,22 +149,26 @@ export function App() {
         <About />
 
         {/* Menu & Products Section */}
-        <MenuSection />
+        <Suspense fallback={<div className="min-h-[400px]" />}>
+          <MenuSection />
+        </Suspense>
 
         {/* Respiro Callout Section */}
         <Respiro onNavigate={handleNavigate} />
 
-        {/* Gallery & Lightbox Section */}
-        <Gallery />
+        <Suspense fallback={<div className="min-h-[300px]" />}>
+          {/* Gallery & Lightbox Section */}
+          <Gallery />
 
-        {/* Nossas Casas / Units Section */}
-        <Units />
+          {/* Nossas Casas / Units Section */}
+          <Units />
 
-        {/* Franchise Section (With Quero Começar CTA) */}
-        <Franchise onNavigateToFranchise={() => navigateTo('franchise')} />
+          {/* Franchise Section (With Quero Começar CTA) */}
+          <Franchise onNavigateToFranchise={() => navigateTo('franchise')} />
 
-        {/* Contact Section */}
-        <Contact />
+          {/* Contact Section */}
+          <Contact />
+        </Suspense>
       </main>
 
       {/* Complete Footer with subtle Admin access */}

@@ -9,6 +9,9 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
 };
 
 // Edge cache headers for peak performance (1 minute browser, 1 hour CDN edge, SWR 24h)
@@ -28,7 +31,7 @@ const NO_CACHE_HEADERS = {
 /**
  * Strict Input Sanitizer to neutralize HTML/Script injections in database records
  */
-function sanitize(input: any, maxLength = 500): string {
+function sanitize(input: unknown, maxLength = 500): string {
   if (typeof input !== 'string') return '';
   return input
     .replace(/[<>'"&]/g, (char) => {
@@ -60,8 +63,8 @@ function isAuthorized(request: Request, env: Env): boolean {
     return token === env.ADMIN_API_KEY;
   }
 
-  // 2. Validate token structure (signed session token format or admin secret)
-  return token.length >= 16;
+  // 2. Validate token structure (signed session token format requires at least 32 characters)
+  return token.length >= 32;
 }
 
 export default {
@@ -76,6 +79,13 @@ export default {
     // API Routes for Cloudflare D1
     if (url.pathname.startsWith('/api/')) {
       try {
+        // POST /api/telemetry - Anonymous RUM Core Web Vitals telemetry receiver
+        if (url.pathname === '/api/telemetry' && request.method === 'POST') {
+          return new Response(JSON.stringify({ success: true }), {
+            headers: NO_CACHE_HEADERS,
+          });
+        }
+
         // GET /api/menu - Returns full active menu with edge caching
         if (url.pathname === '/api/menu' && request.method === 'GET') {
           const [categoriesRes, productsRes] = await Promise.all([
@@ -98,8 +108,10 @@ export default {
         if (url.pathname === '/api/settings' && request.method === 'GET') {
           const settingsRes = await env.DB.prepare('SELECT key, value, category FROM site_settings').all();
           const settingsMap: Record<string, string> = {};
-          for (const row of settingsRes.results as any[]) {
-            settingsMap[row.key] = row.value;
+          for (const row of settingsRes.results as Record<string, unknown>[]) {
+            if (typeof row.key === 'string' && typeof row.value === 'string') {
+              settingsMap[row.key] = row.value;
+            }
           }
 
           return new Response(
@@ -236,7 +248,7 @@ export default {
             )
           `).run();
 
-          const body = (await request.json()) as any;
+          const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
           const name = sanitize(body.name, 100);
           const email = sanitize(body.email, 120);
           const phone = sanitize(body.phone, 30);
@@ -273,7 +285,7 @@ export default {
             });
           }
 
-          const body = (await request.json()) as any;
+          const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
           if (!body.id || !body.status) {
             return new Response(JSON.stringify({ error: 'id and status required' }), {
               status: 400,
@@ -290,29 +302,13 @@ export default {
           });
         }
 
-        // GET /api/gallery - Return active gallery posts (PUBLIC)
+        // GET /api/gallery - Return active gallery posts (PUBLIC with edge caching)
         if (url.pathname === '/api/gallery' && request.method === 'GET') {
-          await env.DB.prepare(`
-            CREATE TABLE IF NOT EXISTS gallery_posts (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              slot_number INTEGER NOT NULL UNIQUE,
-              type TEXT DEFAULT 'photo',
-              media_url TEXT NOT NULL,
-              thumbnail_url TEXT,
-              permalink TEXT,
-              caption TEXT,
-              category TEXT DEFAULT 'ElChicano',
-              likes INTEGER DEFAULT 0,
-              is_active INTEGER DEFAULT 1,
-              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-          `).run();
-
           const postsRes = await env.DB.prepare(
             'SELECT * FROM gallery_posts WHERE is_active = 1 ORDER BY slot_number ASC'
           ).all();
           return new Response(JSON.stringify({ success: true, posts: postsRes.results }), {
-            headers: NO_CACHE_HEADERS,
+            headers: CACHE_HEADERS,
           });
         }
 
@@ -341,7 +337,7 @@ export default {
             )
           `).run();
 
-          const body = (await request.json()) as any;
+          const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
           if (!body.slot_number || !body.media_url) {
             return new Response(JSON.stringify({ error: 'slot_number e media_url são obrigatórios' }), {
               status: 400,
@@ -387,7 +383,7 @@ export default {
             });
           }
 
-          const body = (await request.json().catch(() => ({}))) as any;
+          const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
           if (body.slot_number) {
             await env.DB.prepare('DELETE FROM gallery_posts WHERE slot_number = ?')
               .bind(Number(body.slot_number))
@@ -405,8 +401,9 @@ export default {
           status: 404,
           headers: CORS_HEADERS,
         });
-      } catch (err: any) {
-        return new Response(JSON.stringify({ error: err.message || 'Erro interno no servidor' }), {
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Erro interno no servidor';
+        return new Response(JSON.stringify({ error: errorMsg }), {
           status: 500,
           headers: CORS_HEADERS,
         });

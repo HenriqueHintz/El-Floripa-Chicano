@@ -103,8 +103,8 @@ export const LightboxModal = ({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Visualizador de Galeria"
-        className="max-w-4xl w-full max-h-[90vh] bg-[#001219] border-4 border-[#001219] rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+        aria-label="Visualizador de Galeria El Chicano"
+        className="max-w-4xl w-full max-h-[90dvh] bg-[#001219] border-4 border-[#001219] rounded-3xl overflow-hidden shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Media Container */}

@@ -272,10 +272,11 @@ export const FranchisePage = ({ onBackToHome }: FranchisePageProps) => {
                 <form onSubmit={handleSubmit} className="flex flex-col gap-3.5 text-left">
                   {/* Nome */}
                   <div>
-                    <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
+                    <label htmlFor="lead-name" className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
                       Seu Nome Completo *
                     </label>
                     <input
+                      id="lead-name"
                       type="text"
                       name="name"
                       required
@@ -289,10 +290,11 @@ export const FranchisePage = ({ onBackToHome }: FranchisePageProps) => {
                   {/* WhatsApp & Email */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
+                      <label htmlFor="lead-phone" className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
                         WhatsApp (com DDD) *
                       </label>
                       <input
+                        id="lead-phone"
                         type="tel"
                         name="phone"
                         required
@@ -304,10 +306,11 @@ export const FranchisePage = ({ onBackToHome }: FranchisePageProps) => {
                     </div>
 
                     <div>
-                      <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
+                      <label htmlFor="lead-email" className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
                         E-mail *
                       </label>
                       <input
+                        id="lead-email"
                         type="email"
                         name="email"
                         required
@@ -322,10 +325,11 @@ export const FranchisePage = ({ onBackToHome }: FranchisePageProps) => {
                   {/* Cidade & Estado */}
                   <div className="grid grid-cols-3 gap-3">
                     <div className="col-span-2">
-                      <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
+                      <label htmlFor="lead-city" className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
                         Cidade de Interesse *
                       </label>
                       <input
+                        id="lead-city"
                         type="text"
                         name="city"
                         required
@@ -337,10 +341,11 @@ export const FranchisePage = ({ onBackToHome }: FranchisePageProps) => {
                     </div>
 
                     <div>
-                      <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
+                      <label htmlFor="lead-state" className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
                         UF *
                       </label>
                       <select
+                        id="lead-state"
                         name="state"
                         value={formData.state}
                         onChange={handleInputChange}
@@ -357,10 +362,11 @@ export const FranchisePage = ({ onBackToHome }: FranchisePageProps) => {
 
                   {/* Capital Disponível */}
                   <div>
-                    <label className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
+                    <label htmlFor="lead-capital" className="block font-mono text-[11px] uppercase font-bold text-[#001219] mb-1">
                       Capital Disponível para Investimento
                     </label>
                     <select
+                      id="lead-capital"
                       name="capital"
                       value={formData.capital}
                       onChange={handleInputChange}

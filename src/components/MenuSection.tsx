@@ -22,11 +22,18 @@ export const MenuSection: React.FC = () => {
   });
 
   useEffect(() => {
+    let timeoutId: number | undefined;
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 640);
+      clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        setIsMobile(window.innerWidth < 640);
+      }, 150);
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   // Máximo de 4 cards por página no mobile e 6 no desktop
@@ -215,6 +222,7 @@ export const MenuSection: React.FC = () => {
             <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#EE9B00] absolute left-3 sm:left-4 pointer-events-none" />
             <input
               type="text"
+              aria-label="Buscar pratos, tacos, burritos, molhos no cardápio"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar pratos, tacos, burritos, molhos..."
@@ -410,7 +418,7 @@ export const MenuSection: React.FC = () => {
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-1 sm:gap-2">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
                           {/* Quick view Eye button */}
                           <button
                             type="button"
@@ -418,10 +426,11 @@ export const MenuSection: React.FC = () => {
                               e.stopPropagation();
                               setActiveProduct(product);
                             }}
-                            className="w-7 h-7 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-white hover:bg-[#FAF5E8] text-[#001219] font-mono text-xs font-bold border border-[#001219] sm:border-2 shadow-sm flex items-center justify-center transition-all cursor-pointer"
-                            title="Ver prato ampliado"
+                            className="w-8 h-8 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-white hover:bg-[#FAF5E8] text-[#001219] font-mono text-xs font-bold border border-[#001219] sm:border-2 shadow-sm flex items-center justify-center transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
+                            title={`Ver prato ampliado: ${product.name}`}
+                            aria-label={`Ver detalhes e foto de ${product.name}`}
                           >
-                            <Eye className="w-3.5 h-3.5 sm:w-3.5 sm:h-3.5 stroke-[2.2px]" />
+                            <Eye className="w-4 h-4 sm:w-3.5 sm:h-3.5 stroke-[2.2px]" />
                           </button>
 
                           {/* Fazer Pedido button */}
@@ -429,11 +438,12 @@ export const MenuSection: React.FC = () => {
                             href={SITE_INFO.cardapioWebUrl}
                             target="_blank"
                             rel="noopener noreferrer"
+                            aria-label={`Fazer pedido de ${product.name} no CardápioWeb`}
                             onClick={(e) => e.stopPropagation()}
-                            className="h-7 sm:h-auto px-2 py-0.5 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-[10px] sm:text-xs uppercase tracking-wider border border-[#001219] sm:border-2 shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center gap-1 sm:gap-1.5 cursor-pointer"
+                            className="h-8 sm:h-auto px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-[11px] sm:text-xs uppercase tracking-wider border border-[#001219] sm:border-2 shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center gap-1 sm:gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
                           >
                             <span>Pedir</span>
-                            <ExternalLink className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
+                            <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                           </a>
                         </div>
                       </div>
@@ -517,10 +527,10 @@ export const MenuSection: React.FC = () => {
         onClose={() => setActiveProduct(null)}
       />
 
-      {/* Immersive Transition to Respiro */}
-      <div className="absolute bottom-0 left-0 right-0 h-36 bg-gradient-to-b from-transparent via-[#001219]/60 to-[#001219] pointer-events-none z-[2]" />
-      <div className="section-divider-warm" />
-      <div className="section-divider-glow-warm" />
+      {/* Immersive Transition to Respiro (Desktop only; mobile divider owned by Respiro) */}
+      <div className="hidden sm:block absolute bottom-0 left-0 right-0 h-36 bg-gradient-to-b from-transparent via-[#001219]/60 to-[#001219] pointer-events-none z-[2]" />
+      <div className="hidden sm:block section-divider-warm" />
+      <div className="hidden sm:block section-divider-glow-warm" />
     </section>
   );
 };

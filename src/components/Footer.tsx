@@ -31,13 +31,16 @@ export const Footer = ({ onNavigate }: FooterProps) => {
 
   return (
     <footer className="relative bg-[#001219] text-[#E9D8A6] overflow-hidden">
-      {/* Top Gradient Divider */}
-      <div 
-        className="h-1.5 w-full"
-        style={{
-          background: 'linear-gradient(90deg, transparent 0%, #005F73 20%, #0A9396 50%, #005F73 80%, transparent 100%)'
-        }}
-      />
+      {/* Top Gradient Divider - Refinado 1px no mobile com brilho imersivo, 6px no desktop */}
+      <div className="relative w-full">
+        <div 
+          className="h-px sm:h-1.5 w-full"
+          style={{
+            background: 'linear-gradient(90deg, transparent 0%, #005F73 20%, #0A9396 50%, #005F73 80%, transparent 100%)'
+          }}
+        />
+        <div className="sm:hidden absolute top-0 left-1/2 -translate-x-1/2 w-48 h-2 bg-[#0A9396]/25 blur-[4px] rounded-full pointer-events-none" />
+      </div>
 
       <div className="max-w-[92rem] mx-auto px-4 sm:px-8 lg:px-12 pt-16 pb-12 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8 pb-12 border-b border-white/[0.08]">
