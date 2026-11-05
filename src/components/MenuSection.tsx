@@ -368,7 +368,7 @@ export const MenuSection: React.FC = () => {
                     className="group bg-[#FAF5E8] border-2 sm:border-4 border-[#001219] rounded-xl sm:rounded-3xl overflow-hidden shadow-chicano-sm sm:shadow-chicano hover:shadow-chicano-lg hover:-translate-y-0.5 sm:hover:-translate-y-2 transition-all duration-300 flex flex-row sm:flex-col justify-between cursor-pointer will-change-transform h-[92px] sm:h-auto min-h-[92px] sm:min-h-0"
                   >
                     {/* Image Container: Left on mobile (larger 115px width and 92px height), Top on desktop (full width) */}
-                    <div className="relative w-[115px] sm:w-full h-full sm:aspect-[16/10] shrink-0 bg-[#001219] overflow-hidden border-r-2 sm:border-r-0 sm:border-b-3 border-[#001219] order-first">
+                    <div className="relative w-[115px] sm:w-full h-full sm:h-auto sm:aspect-[16/10] shrink-0 bg-[#001219] overflow-hidden border-r-2 sm:border-r-0 sm:border-b-4 border-[#001219] order-first">
                       <TrimmedImage
                         src={imgUrl}
                         alt={product.name}
@@ -395,30 +395,62 @@ export const MenuSection: React.FC = () => {
                     </div>
 
                     {/* Content Column: Right on mobile (flex-1), Bottom on desktop */}
-                    <div className="flex-1 p-2.5 sm:p-6 text-left flex flex-col justify-between min-w-0 order-last h-full">
+                    <div className="flex-1 p-2.5 sm:p-5 lg:p-6 text-left flex flex-col justify-between min-w-0 order-last h-full sm:h-auto">
                       <div>
-                        <h3 className="font-display font-black text-xs sm:text-xl text-[#001219] uppercase leading-tight sm:leading-snug group-hover:text-[#CA6702] transition-colors duration-200 line-clamp-2 sm:min-h-[3rem]">
+                        {/* Title: Compact on mobile, bold prominent heading on desktop */}
+                        <h3 className="font-display font-black text-xs sm:text-lg lg:text-xl text-[#001219] uppercase leading-tight sm:leading-snug group-hover:text-[#CA6702] transition-colors duration-200 line-clamp-2">
                           {product.name}
                         </h3>
-
-                        {/* Description: HIDDEN on mobile (guarantees same height for all cards), visible on desktop */}
-                        <p className="hidden sm:block font-sans text-xs text-[#001219]/75 mt-2 line-clamp-2 leading-relaxed min-h-[2.4rem]">
-                          {product.description || 'Preparado artesanalmente no fogo com ingredientes selecionados.'}
-                        </p>
                       </div>
 
-                      {/* Price & Action footer */}
-                      <div className="pt-0.5 sm:pt-3 flex items-center justify-between sm:border-t sm:border-[#001219]/10 mt-auto">
+                      {/* Mobile Footer (< sm only): Price on left, compact buttons on right */}
+                      <div className="sm:hidden pt-0.5 flex items-center justify-between mt-auto">
                         <div className="flex flex-col">
-                          <span className="text-[7px] sm:text-[9px] font-mono uppercase tracking-widest text-[#001219]/50 font-black hidden sm:block">
-                            Preço
-                          </span>
-                          <span className="font-mono font-black text-xs sm:text-lg text-[#CA6702]">
+                          <span className="font-mono font-black text-xs text-[#CA6702]">
                             {formatPrice(product.price)}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-1.5 sm:gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveProduct(product);
+                            }}
+                            className="w-8 h-8 rounded-lg bg-white hover:bg-[#FAF5E8] text-[#001219] font-mono text-xs font-bold border border-[#001219] shadow-sm flex items-center justify-center transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
+                            title={`Ver prato ampliado: ${product.name}`}
+                            aria-label={`Ver detalhes rápidos de ${product.name}`}
+                          >
+                            <Eye className="w-4 h-4 stroke-[2.2px]" />
+                          </button>
+
+                          <a
+                            href={SITE_INFO.cardapioWebUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Fazer pedido de ${product.name} no CardápioWeb`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-8 px-2.5 py-1 rounded-lg bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-[11px] uppercase tracking-wider border border-[#001219] shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
+                          >
+                            <span>Pedir</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Desktop Footer (>= sm only): Preço à esquerda e Botão FAZER PEDIDO à direita */}
+                      <div className="hidden sm:flex items-center justify-between gap-2 pt-3 border-t-2 border-[#001219]/10 mt-4">
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-mono uppercase tracking-widest text-[#001219]/50 font-black">
+                            Preço
+                          </span>
+                          <span className="font-mono font-black text-base lg:text-lg text-[#CA6702]">
+                            {formatPrice(product.price)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                           {/* Quick view Eye button */}
                           <button
                             type="button"
@@ -426,24 +458,24 @@ export const MenuSection: React.FC = () => {
                               e.stopPropagation();
                               setActiveProduct(product);
                             }}
-                            className="w-8 h-8 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-white hover:bg-[#FAF5E8] text-[#001219] font-mono text-xs font-bold border border-[#001219] sm:border-2 shadow-sm flex items-center justify-center transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
+                            className="p-2 rounded-xl bg-white hover:bg-[#FAF5E8] text-[#001219] font-mono text-xs font-bold border-2 border-[#001219] shadow-chicano-sm flex items-center justify-center transition-all cursor-pointer hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
                             title={`Ver prato ampliado: ${product.name}`}
                             aria-label={`Ver detalhes e foto de ${product.name}`}
                           >
-                            <Eye className="w-4 h-4 sm:w-3.5 sm:h-3.5 stroke-[2.2px]" />
+                            <Eye className="w-4 h-4 stroke-[2.2px]" />
                           </button>
 
-                          {/* Fazer Pedido button */}
+                          {/* Botão FAZER PEDIDO */}
                           <a
                             href={SITE_INFO.cardapioWebUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label={`Fazer pedido de ${product.name} no CardápioWeb`}
                             onClick={(e) => e.stopPropagation()}
-                            className="h-8 sm:h-auto px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-[11px] sm:text-xs uppercase tracking-wider border border-[#001219] sm:border-2 shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center gap-1 sm:gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
+                            className="px-3.5 py-2 rounded-xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-2 border-[#001219] shadow-chicano-sm hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
                           >
-                            <span>Pedir</span>
-                            <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                            <span>FAZER PEDIDO</span>
+                            <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                           </a>
                         </div>
                       </div>
@@ -529,8 +561,6 @@ export const MenuSection: React.FC = () => {
 
       {/* Immersive Transition to Respiro (Desktop only; mobile divider owned by Respiro) */}
       <div className="hidden sm:block absolute bottom-0 left-0 right-0 h-36 bg-gradient-to-b from-transparent via-[#001219]/60 to-[#001219] pointer-events-none z-[2]" />
-      <div className="hidden sm:block section-divider-warm" />
-      <div className="hidden sm:block section-divider-glow-warm" />
     </section>
   );
 };

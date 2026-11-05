@@ -1,6 +1,12 @@
 import time
 from playwright.sync_api import sync_playwright
 
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+EVIDENCE_DIR = ROOT_DIR / "tests" / "evidence"
+EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
+
 def capture():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -17,12 +23,37 @@ def capture():
         page.goto("http://localhost:3000/", wait_until="networkidle")
         time.sleep(2)
 
+        # 0. Header & Hero
+        page.screenshot(path=str(EVIDENCE_DIR / "mobile_header.png"))
+        print("Captured mobile_header.png")
+
+        # 0.1 Open Mobile Drawer (Hamburger Menu)
+        menu_button = page.locator('button[aria-label="Abrir menu de navegação"]')
+        if menu_button.count() > 0:
+            menu_button.click()
+            time.sleep(1)
+            page.screenshot(path=str(EVIDENCE_DIR / "mobile_drawer_ice_gray.png"))
+            print("Captured mobile_drawer_ice_gray.png")
+            # Close it
+            close_button = page.locator('button[aria-label="Fechar menu"]')
+            if close_button.count() > 0:
+                close_button.click()
+                time.sleep(1)
+
+        # 0.5 About section
+        about = page.locator("#about-section")
+        if about.count() > 0:
+            about.scroll_into_view_if_needed()
+            time.sleep(1)
+            page.screenshot(path=str(EVIDENCE_DIR / "mobile_about.png"))
+            print("Captured mobile_about.png")
+
         # 1. Respiro section
         respiro = page.locator("#respiro-section")
         if respiro.count() > 0:
             respiro.scroll_into_view_if_needed()
             time.sleep(1)
-            page.screenshot(path="tests/evidence/mobile_respiro.png")
+            page.screenshot(path=str(EVIDENCE_DIR / "mobile_respiro.png"))
             print("Captured mobile_respiro.png")
 
         # 1.5 Gallery section
@@ -30,7 +61,7 @@ def capture():
         if gallery.count() > 0:
             gallery.scroll_into_view_if_needed()
             time.sleep(1)
-            page.screenshot(path="tests/evidence/mobile_gallery.png")
+            page.screenshot(path=str(EVIDENCE_DIR / "mobile_gallery.png"))
             print("Captured mobile_gallery.png")
 
         # 2. Units section
@@ -38,7 +69,7 @@ def capture():
         if units.count() > 0:
             units.scroll_into_view_if_needed()
             time.sleep(1)
-            page.screenshot(path="tests/evidence/mobile_units.png")
+            page.screenshot(path=str(EVIDENCE_DIR / "mobile_units.png"))
             print("Captured mobile_units.png")
 
         # 3. Franchise section
@@ -46,7 +77,7 @@ def capture():
         if franchise.count() > 0:
             franchise.scroll_into_view_if_needed()
             time.sleep(1)
-            page.screenshot(path="tests/evidence/mobile_franchise.png")
+            page.screenshot(path=str(EVIDENCE_DIR / "mobile_franchise.png"))
             print("Captured mobile_franchise.png")
 
         # 4. Contact section
@@ -54,7 +85,7 @@ def capture():
         if contact.count() > 0:
             contact.scroll_into_view_if_needed()
             time.sleep(1)
-            page.screenshot(path="tests/evidence/mobile_contact.png")
+            page.screenshot(path=str(EVIDENCE_DIR / "mobile_contact.png"))
             print("Captured mobile_contact.png")
 
         browser.close()

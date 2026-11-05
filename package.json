@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "python tests/run_qa_suite.py",
+    "test:e2e": "python tests/run_qa_suite.py",
+    "test:full": "npm run build && python tests/run_qa_suite.py"
   },
   "dependencies": {
     "clsx": "^2.1.1",

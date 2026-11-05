@@ -60,10 +60,7 @@ export const Gallery: React.FC = () => {
     // 1. Initial hydration
     refreshGallery();
 
-    // 2. Real-time periodic sync (every 4 seconds) for live multi-device feed updates
-    const pollInterval = setInterval(refreshGallery, 4000);
-
-    // 3. Instant Real-Time Cross-Component & Cross-Tab Subscription
+    // 2. Instant Real-Time Cross-Component & Cross-Tab Subscription
     const unsub = subscribeRealtime('GALLERY_UPDATED', (updatedPosts) => {
       if (isMounted && Array.isArray(updatedPosts) && updatedPosts.length > 0) {
         setD1Posts(updatedPosts);
@@ -72,27 +69,29 @@ export const Gallery: React.FC = () => {
       }
     });
 
-    // 4. Tab Focus, Visibility & Storage Revalidation
+    // 3. Tab Focus, Visibility & Storage Revalidation
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         refreshGallery();
       }
     };
 
-    window.addEventListener('focus', refreshGallery);
-    document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('storage', (e) => {
+    const handleStorage = (e: StorageEvent) => {
       if (e.key === 'elchicano_d1_gallery_store') {
         refreshGallery();
       }
-    });
+    };
+
+    window.addEventListener('focus', refreshGallery);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('storage', handleStorage);
 
     return () => {
       isMounted = false;
-      clearInterval(pollInterval);
       unsub();
       window.removeEventListener('focus', refreshGallery);
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('storage', handleStorage);
     };
   }, []);
 
@@ -262,7 +261,7 @@ export const Gallery: React.FC = () => {
   return (
     <section
       id="gallery-section"
-      className="min-h-[100dvh] pt-20 pb-12 md:py-24 relative overflow-hidden flex flex-col justify-center"
+      className="min-h-[100dvh] pt-24 pb-12 lg:pt-32 lg:pb-24 scroll-mt-20 relative overflow-hidden flex flex-col justify-center"
       style={{
         background: 'linear-gradient(180deg, #005F73 0%, #004754 50%, #003843 100%)',
       }}
@@ -400,8 +399,6 @@ export const Gallery: React.FC = () => {
 
       {/* Immersive Transition to Units (Desktop only; mobile divider owned by Units) */}
       <div className="hidden sm:block absolute bottom-0 left-0 right-0 h-36 bg-gradient-to-b from-transparent via-[#003843]/60 to-[#004754]/50 pointer-events-none z-[2]" />
-      <div className="hidden sm:block section-divider-cool" />
-      <div className="hidden sm:block section-divider-glow-cool" />
     </section>
   );
 };

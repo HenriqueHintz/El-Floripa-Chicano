@@ -74,7 +74,7 @@ export function smoothScrollToPosition(targetY: number, customDuration?: number)
 /**
  * Navigates to a target section accounting for fixed floating header clearance.
  */
-export function smoothScrollToTarget(hrefOrId: string, headerOffset: number = 70) {
+export function smoothScrollToTarget(hrefOrId: string, headerOffset: number = 88) {
   if (!hrefOrId) return;
   const selector = hrefOrId.startsWith('#') ? hrefOrId : `#${hrefOrId}`;
   const targetEl = document.querySelector(selector);

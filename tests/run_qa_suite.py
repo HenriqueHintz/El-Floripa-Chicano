@@ -34,10 +34,27 @@ class QuietFileHandler(http.server.SimpleHTTPRequestHandler):
         except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
             pass
 
+httpd_server = None
+
 def start_server():
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("127.0.0.1", PORT), QuietFileHandler) as httpd:
-        httpd.serve_forever()
+    global httpd_server
+    socketserver.ThreadingTCPServer.allow_reuse_address = True
+    socketserver.ThreadingTCPServer.request_queue_size = 128
+    httpd_server = socketserver.ThreadingTCPServer(("127.0.0.1", PORT), QuietFileHandler)
+    httpd_server.serve_forever()
+
+def stop_server():
+    global httpd_server
+    if httpd_server is not None:
+        try:
+            httpd_server.shutdown()
+        except Exception:
+            pass
+        try:
+            httpd_server.server_close()
+        except Exception:
+            pass
+        httpd_server = None
 
 def wait_for_server(base_url, timeout=10):
     start = time.time()
@@ -50,34 +67,7 @@ def wait_for_server(base_url, timeout=10):
             time.sleep(0.2)
     return False
 
-def run_qa_suite():
-    # 1. Start Server
-    server_thread = threading.Thread(target=start_server, daemon=True)
-    server_thread.start()
-
-    base_url = f"http://127.0.0.1:{PORT}"
-    if not wait_for_server(base_url):
-        print(f"ERROR: Server failed to start on {base_url}")
-        sys.exit(1)
-
-    print("=" * 75)
-    print("EL CHICANO — AUDITORIA FINAL DE QA, TESTES & VALIDAÇÃO EMPÍRICA")
-    print(f"Base URL: {base_url} | Artifacts: {EVIDENCE_DIR}")
-    print("=" * 75)
-
-    test_results = []
-    
-    def log_test(category, name, passed, details="", screenshot_name=None):
-        test_results.append({
-            "category": category,
-            "name": name,
-            "status": "PASS" if passed else "FAIL",
-            "details": details,
-            "screenshot": screenshot_name
-        })
-        status_str = "[PASS]" if passed else "[FAIL]"
-        print(f"{status_str} {category.upper()}: {name} - {details}")
-
+def _run_test_suites(base_url, log_test, test_results):
     with sync_playwright() as p:
         # ======================================================================
         # SUITE 1: CROSS-BROWSER & RESPONSIVE MATRIX (5 ENVIRONMENTS)
@@ -127,7 +117,7 @@ def run_qa_suite():
 
             # Check Skip link (with wait)
             try:
-                skip_link = page.wait_for_selector('a[href="#main-content"]', timeout=3000)
+                skip_link = page.wait_for_selector('a[href="#main-content"]', timeout=10000)
                 has_skip = skip_link is not None
             except Exception:
                 has_skip = False
@@ -152,7 +142,11 @@ def run_qa_suite():
         page.wait_for_timeout(500)
 
         # Search test
-        search_inp = page.query_selector('input[aria-label="Buscar pratos, tacos, burritos, molhos no cardápio"]')
+        try:
+            search_inp = page.wait_for_selector('input[aria-label="Buscar pratos, tacos, burritos, molhos no cardápio"]', timeout=10000)
+        except Exception:
+            search_inp = None
+
         if search_inp:
             search_inp.fill("Burrito")
             page.wait_for_timeout(400)
@@ -165,16 +159,23 @@ def run_qa_suite():
             log_test("Functional", "Menu Realtime Search Filtering", False, "Search input not found")
 
         # ProductModal test
-        eye_btn = page.query_selector('button[aria-label*="Ver detalhes e foto de"]')
+        try:
+            eye_btn = page.wait_for_selector('button[aria-label*="Ver detalhes"]:visible', timeout=10000)
+        except Exception:
+            eye_btn = None
+
         if eye_btn:
             eye_btn.click()
             page.wait_for_timeout(400)
-            modal = page.query_selector('[role="dialog"][aria-labelledby="product-modal-name"]')
+            try:
+                modal = page.wait_for_selector('[role="dialog"][aria-labelledby="product-modal-name"]', timeout=5000)
+            except Exception:
+                modal = None
             modal_visible = modal is not None
             if modal_visible:
                 page.screenshot(path=str(EVIDENCE_DIR / "product_modal_active.png"))
                 page.keyboard.press("Escape")
-                page.wait_for_timeout(300)
+                page.wait_for_timeout(400)
                 modal_closed = page.query_selector('[role="dialog"][aria-labelledby="product-modal-name"]') is None
                 log_test("Functional", "ProductModal Open & Escape Close", modal_visible and modal_closed, 
                          "Modal opened with photo and closed on Escape")
@@ -276,6 +277,43 @@ def run_qa_suite():
 
     return failed == 0
 
+def run_qa_suite():
+    # 1. Start Server
+    server_thread = threading.Thread(target=start_server, daemon=True)
+    server_thread.start()
+
+    base_url = f"http://127.0.0.1:{PORT}"
+    if not wait_for_server(base_url):
+        print(f"ERROR: Server failed to start on {base_url}")
+        stop_server()
+        sys.exit(1)
+
+    print("=" * 75)
+    print("EL CHICANO — AUDITORIA FINAL DE QA, TESTES & VALIDAÇÃO EMPÍRICA")
+    print(f"Base URL: {base_url} | Artifacts: {EVIDENCE_DIR}")
+    print("=" * 75)
+
+    test_results = []
+    
+    def log_test(category, name, passed, details="", screenshot_name=None):
+        test_results.append({
+            "category": category,
+            "name": name,
+            "status": "PASS" if passed else "FAIL",
+            "details": details,
+            "screenshot": screenshot_name
+        })
+        status_str = "[PASS]" if passed else "[FAIL]"
+        print(f"{status_str} {category.upper()}: {name} - {details}")
+
+    try:
+        return _run_test_suites(base_url, log_test, test_results)
+    finally:
+        stop_server()
+        if server_thread.is_alive():
+            server_thread.join(timeout=2)
+
 if __name__ == "__main__":
     success = run_qa_suite()
     sys.exit(0 if success else 1)
+

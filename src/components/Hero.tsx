@@ -3,6 +3,7 @@ import { FireCanvas } from './FireCanvas';
 import { SITE_INFO } from '../data/constants';
 import { ShoppingBag, ArrowDown } from 'lucide-react';
 import { smoothScrollToTarget } from '../utils/scroll';
+import { SectionDivider } from './SectionDivider';
 
 interface HeroProps {
   onNavigate?: (href: string) => void;
@@ -189,8 +190,7 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
       </div>
 
       {/* 8. Divisória Suave de Transição */}
-      <div className="section-divider-warm" />
-      <div className="section-divider-glow-warm" />
+      <SectionDivider position="bottom" variant="warm" blend="none" />
     </section>
   );
 };

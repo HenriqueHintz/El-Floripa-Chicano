@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SITE_INFO } from '../data/constants';
 import { ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SectionDivider } from './SectionDivider';
 
 interface Chapter {
   id: string;
@@ -39,8 +40,13 @@ export const About: React.FC = () => {
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScroll = useRef(false);
   const activeIdxRef = useRef(0);
+  const pausedUntilRef = useRef<number>(0);
   const [desktopIdx, setDesktopIdx] = useState(0);
   const [mobileIdx, setMobileIdx] = useState(0);
+
+  const pauseAutoSlide = () => {
+    pausedUntilRef.current = Date.now() + 10000;
+  };
 
   // Sync ref with current active index
   useEffect(() => {
@@ -128,11 +134,12 @@ export const About: React.FC = () => {
     }
   };
 
-  // Auto-slide automático rigorosamente na ordem 1 -> 2 -> 3 -> 1 (< 1024px)
+  // Auto-slide automático rigorosamente na ordem 1 -> 2 -> 3 -> 1 (< 1024px) com pausa ao toque
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const timer = setInterval(() => {
+      if (Date.now() < pausedUntilRef.current) return;
       if (window.innerWidth < 1024) {
         const nextIdx = (activeIdxRef.current + 1) % CHAPTERS.length;
         scrollToMobileChapter(nextIdx);
@@ -143,11 +150,13 @@ export const About: React.FC = () => {
   }, []);
 
   const nextMobileChapter = () => {
+    pauseAutoSlide();
     const next = (activeIdxRef.current + 1) % CHAPTERS.length;
     scrollToMobileChapter(next);
   };
 
   const prevMobileChapter = () => {
+    pauseAutoSlide();
     const prev = (activeIdxRef.current - 1 + CHAPTERS.length) % CHAPTERS.length;
     scrollToMobileChapter(prev);
   };
@@ -176,11 +185,11 @@ export const About: React.FC = () => {
 
           {/* ================================================================= */}
           {/* MOBILE VERSION (< 1024px): 100% ENQUADRADO NA TELA DO CELULAR     */}
-          {/* Espaçamento harmonioso e compacto entre cabeçalho, cards e botões */}
+          {/* Espaçamento harmonioso e arejado entre cabeçalho, cards e botões  */}
           {/* ================================================================= */}
-          <div className="block lg:hidden w-full text-left flex flex-col justify-center gap-2.5 sm:gap-3 py-1">
+          <div className="block lg:hidden w-full text-left flex flex-col justify-center py-3 sm:py-5">
             {/* Header Mobile Compacto */}
-            <div className="shrink-0">
+            <div className="shrink-0 mb-3 sm:mb-4">
               <span className="inline-block font-mono text-[10px] text-[#EE9B00] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-[#EE9B00]/10 border border-[#EE9B00]/20 mb-1">
                 Nossa Origem & Essência
               </span>
@@ -189,11 +198,14 @@ export const About: React.FC = () => {
               </h2>
             </div>
 
-            {/* Trilho de Cards Compactos com Snap Horizontal Nativo */}
+            {/* Trilho de Cards Centrais: com pequeno afastamento superior e inferior */}
             <div
               ref={mobileScrollRef}
               onScroll={handleMobileScroll}
-              className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory py-1 -mx-4 px-4 scrollbar-none touch-pan-y select-none"
+              onTouchStart={pauseAutoSlide}
+              onTouchEnd={pauseAutoSlide}
+              onPointerDown={pauseAutoSlide}
+              className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory my-3 sm:my-4 py-1 -mx-4 px-4 scrollbar-none touch-pan-y select-none"
               style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}
             >
               {CHAPTERS.map((ch, idx) => {
@@ -252,8 +264,8 @@ export const About: React.FC = () => {
               })}
             </div>
 
-            {/* Controles de Navegação no Mobile (Pills + Setas + CTA) */}
-            <div className="flex items-center justify-between gap-2 pt-1 pb-1 shrink-0">
+            {/* Controles de Navegação no Mobile (Pills + Setas + CTA) com respiro */}
+            <div className="flex items-center justify-between gap-2 pt-2.5 pb-2 shrink-0">
               {/* Indicador de Dots e Setas */}
               <div className="flex items-center gap-1.5">
                 <button
@@ -270,7 +282,10 @@ export const About: React.FC = () => {
                     <button
                       key={`mob-dot-${ch.id}`}
                       type="button"
-                      onClick={() => scrollToMobileChapter(idx)}
+                      onClick={() => {
+                        pauseAutoSlide();
+                        scrollToMobileChapter(idx);
+                      }}
                       className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
                         idx === mobileIdx ? 'w-5 bg-[#EE9B00]' : 'w-1.5 bg-white/25'
                       }`}
@@ -377,10 +392,10 @@ export const About: React.FC = () => {
               </div>
             </div>
 
-            {/* Coluna Direita Desktop: Foto Gigante Cinematográfica */}
+            {/* Coluna Direita Desktop: Card Fotográfico com proporção cinematográfica */}
             <div className="lg:col-span-7 flex justify-center items-center">
               <div
-                className="relative w-full max-w-[530px] aspect-[4/5] rounded-[2rem] p-2 bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85),0_0_30px_rgba(238,155,0,0.15)] transition-transform duration-500 ease-out"
+                className="relative w-full max-w-[480px] lg:max-w-[510px] aspect-[4/5] rounded-[2rem] p-2 bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85),0_0_30px_rgba(238,155,0,0.15)] transition-transform duration-500 ease-out"
                 style={{ transform: 'rotate(-1deg)' }}
               >
                 <div className="absolute -inset-3 bg-[#EE9B00]/10 blur-xl rounded-[2.5rem] pointer-events-none -z-10" />
@@ -408,8 +423,9 @@ export const About: React.FC = () => {
 
         </div>
 
-        {/* Divisória de Transição */}
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-b from-transparent to-[#001219] pointer-events-none z-20" />
+        {/* Divisória Imersiva de Transição para o Cardápio */}
+        <SectionDivider position="bottom" variant="warm" blend="none" />
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-b from-transparent to-[#001219] pointer-events-none z-10" />
       </div>
     </section>
   );

@@ -86,8 +86,8 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
           mobileMenuOpen ? 'opacity-0 pointer-events-none' : ''
         } ${
           scrolled
-            ? 'w-[94%] md:w-[90%] max-w-6xl rounded-[1.8rem] bg-[#001219]/95 backdrop-blur-md shadow-[6px_6px_0px_0px_#000] border-3 border-[#001219] py-2 top-3'
-            : 'w-[96%] md:w-[92%] max-w-6xl rounded-[2.2rem] bg-black/55 backdrop-blur-md shadow-xl border-3 border-white/10 py-3.5 top-5'
+            ? 'w-[94%] md:w-[90%] max-w-6xl rounded-[1.8rem] bg-[#001219]/90 md:bg-[#001219]/95 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.5)] md:shadow-[6px_6px_0px_0px_#000] border-2 md:border-3 border-[#EE9B00]/25 md:border-[#001219] py-2 top-3'
+            : 'w-[96%] md:w-[92%] max-w-6xl rounded-[2.2rem] bg-[#001219]/90 sm:bg-[#001219]/90 md:bg-black/55 backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.4)] md:shadow-xl border-2 md:border-3 border-white/10 py-3 md:py-3.5 top-4 md:top-5'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
@@ -149,16 +149,16 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
             </a>
           </div>
 
-          {/* Mobile Actions: Music Button in Initial Header + Menu Toggle */}
+          {/* Mobile Actions: Dark Cinematic Theme Controls */}
           <div className="flex md:hidden items-center gap-2">
             {/* Mobile Music Toggle Button in Header */}
             <button
               type="button"
               onClick={toggleAudio}
-              className={`h-11 px-3 min-h-[44px] rounded-xl border flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00] ${
+              className={`h-11 px-3.5 min-h-[44px] rounded-xl border flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00] ${
                 isAudioActive
-                  ? 'bg-[#EE9B00] text-[#001219] border-[#EE9B00] scale-102'
-                  : 'bg-white/10 text-[#E9D8A6] border-white/15 hover:border-[#EE9B00] hover:text-white'
+                  ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-sm'
+                  : 'bg-white/10 text-[#E9D8A6] border-white/15 hover:bg-[#EE9B00]/20 hover:text-white hover:border-[#EE9B00]'
               }`}
               title={isAudioActive ? 'Pausar música mexicana' : 'Tocar música mexicana'}
               aria-label={isAudioActive ? 'Pausar música mexicana' : 'Tocar música mexicana'}
@@ -184,7 +184,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="h-11 w-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white/10 border border-white/15 text-[#E9D8A6] hover:text-[#EE9B00] hover:border-[#EE9B00] active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
+              className="h-11 w-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white/10 border border-white/15 text-white hover:bg-[#EE9B00] hover:text-[#001219] hover:border-[#EE9B00] active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
               aria-label="Abrir menu de navegação"
             >
               <Menu className="w-5 h-5" />
@@ -193,16 +193,16 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
         </div>
       </header>
 
-      {/* Mobile Drawer Overlay - Delicate, Clean & Ultra-Legible (No Cards, No Clutter) */}
+      {/* Mobile Drawer Overlay - Light Mode Cinza Gelo (#F0F4F8) */}
       {mobileMenuOpen && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Menu principal de navegação El Chicano"
-          className="md:hidden fixed inset-0 z-50 bg-[#001219] w-full h-[100dvh] flex flex-col justify-between p-5 sm:p-7 overflow-y-auto overscroll-contain animate-in fade-in duration-200"
+          className="md:hidden fixed inset-0 z-50 bg-[#F0F4F8] w-full h-[100dvh] flex flex-col justify-between p-5 sm:p-7 overflow-y-auto overscroll-contain animate-in fade-in duration-200"
         >
-          {/* Top Bar: Delicate Brand Header & Close */}
-          <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+          {/* Top Bar: Brand Header & Close */}
+          <div className="flex items-center justify-between pb-3.5 border-b border-[#001219]/15 shrink-0">
             <div className="flex items-center gap-3 sm:gap-3.5">
               <a
                 href="#hero-section"
@@ -212,9 +212,9 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
                 <Logo className="h-11 sm:h-12 w-auto" />
               </a>
 
-              <div className="h-8 w-px bg-white/15" />
+              <div className="h-8 w-px bg-[#001219]/15" />
 
-              <p className="text-[11px] sm:text-xs font-sans text-[#E9D8A6]/80 leading-tight italic">
+              <p className="text-[11px] sm:text-xs font-sans text-[#001219]/70 leading-tight italic">
                 <span>Comida mexicana</span>
                 <br />
                 <span>com alma brasileira</span>
@@ -224,49 +224,49 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="h-11 w-11 min-h-[44px] min-w-[44px] flex items-center justify-center text-[#E9D8A6] hover:text-[#EE9B00] hover:bg-white/5 active:scale-95 transition-all rounded-xl border border-white/15 cursor-pointer shrink-0 ml-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
+              className="h-11 w-11 min-h-[44px] min-w-[44px] flex items-center justify-center text-[#001219] hover:text-[#CA6702] bg-white hover:bg-[#FAF5E8] active:scale-95 transition-all rounded-xl border-2 border-[#001219] shadow-[2px_2px_0px_#001219] cursor-pointer shrink-0 ml-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EE9B00]"
               aria-label="Fechar menu"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
 
-          {/* Nav Items: Pure Typographic Elegance (No Cards, Clean Dividers) */}
-          <nav className="flex flex-col justify-center my-auto py-2">
+          {/* Nav Items: Pure Typographic Elegance (Clean Ice Gray Dividers & Dark Text) */}
+          <nav className="flex flex-col justify-center my-auto py-3">
             {NAV_LINKS.map((link, index) => (
               <a
                 key={link.label}
                 href={link.href}
                 onClick={(e) => handleLinkClick(e, link.href)}
-                className="group py-3 border-b border-white/5 flex items-center justify-between transition-colors cursor-pointer"
+                className="group py-3.5 border-b border-[#001219]/10 flex items-center justify-between transition-colors cursor-pointer"
               >
                 <div className="flex items-baseline gap-3">
-                  <span className="font-mono text-xs text-[#EE9B00]/70 font-bold">
+                  <span className="font-mono text-xs text-[#CA6702] font-black">
                     0{index + 1}
                   </span>
-                  <span className="font-display font-black text-2xl sm:text-3xl text-white group-hover:text-[#EE9B00] uppercase tracking-tight transition-colors">
+                  <span className="font-display font-black text-2xl sm:text-3xl text-[#001219] group-hover:text-[#CA6702] uppercase tracking-tight transition-colors">
                     {link.label}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-[#E9D8A6]/40 group-hover:text-[#94D2BD] font-sans transition-colors hidden xs:inline">
+                  <span className="text-xs text-[#001219]/55 group-hover:text-[#005F73] font-sans font-medium transition-colors hidden xs:inline">
                     {NAV_SUBTITLES[link.href] || ''}
                   </span>
-                  <ArrowUpRight className="w-5 h-5 text-white/30 group-hover:text-[#EE9B00] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                  <ArrowUpRight className="w-5 h-5 text-[#001219]/30 group-hover:text-[#CA6702] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                 </div>
               </a>
             ))}
           </nav>
 
-          {/* Bottom Section: Centered Instagram Only */}
-          <div className="flex items-center justify-center pt-4 border-t border-white/10 shrink-0">
+          {/* Bottom Section: Centered Instagram in Crisp Light Neo-brutalist Style */}
+          <div className="flex items-center justify-center pt-4 border-t border-[#001219]/15 shrink-0">
             <a
               href={SITE_INFO.instagramUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2.5 px-6 py-2.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/15 hover:border-[#E1306C] text-[#E9D8A6] hover:text-white text-xs font-mono font-bold tracking-widest uppercase transition-all active:scale-95 cursor-pointer shadow-sm"
-              aria-label="Instagram"
+              className="inline-flex items-center justify-center gap-2.5 px-6 py-2.5 min-h-[44px] rounded-full bg-white hover:bg-[#FAF5E8] border-2 border-[#001219] shadow-[2px_2px_0px_#001219] text-[#001219] hover:text-[#CA6702] text-xs font-mono font-black tracking-widest uppercase transition-all active:translate-y-0.5 cursor-pointer"
+              aria-label="Instagram El Chicano"
             >
               <InstagramIcon className="w-4 h-4 text-[#E1306C] shrink-0" />
               <span>Instagram</span>

@@ -36,3 +36,8 @@ Thumbs.db
 .control-tower/
 scratch/
 tests/evidence/
+
+__pycache__/
+*.py[cod]
+.serena/
+

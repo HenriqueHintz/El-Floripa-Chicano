@@ -2,6 +2,7 @@ import React from 'react';
 import { MessageCircle, ShoppingBag, ArrowUpRight } from 'lucide-react';
 import { InstagramIcon as Instagram } from './Icons';
 import { SITE_INFO } from '../data/constants';
+import { SectionDivider } from './SectionDivider';
 
 export const Contact: React.FC = () => {
   return (
@@ -15,6 +16,9 @@ export const Contact: React.FC = () => {
         style={{ backgroundImage: "url('/images/sections/respiro-bg.webp')" }}
       />
       <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#94D2BD]/5 blur-[150px] pointer-events-none z-[1]" />
+
+      {/* Immersive Light Divider connecting Franchise (dark) to Contact (cream) */}
+      <SectionDivider position="top" variant="warm" blend="dark-to-cream" />
 
       {/* Desktop Top Transition */}
       <div className="hidden sm:block absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-[#001219] to-transparent pointer-events-none z-[2]" />
@@ -43,8 +47,8 @@ export const Contact: React.FC = () => {
             Venha viver a experiência El Chicano ou peça no conforto da sua casa.
           </p>
 
-          {/* Stacked Action Buttons: Um embaixo do outro, cada um com sua identidade limpa */}
-          <div className="flex flex-col gap-2.5 sm:gap-3.5 w-full mt-2 sm:mt-3 font-sans pr-10 sm:pr-0">
+          {/* Stacked Action Buttons: Comprimento ajustado (w-fit) terminando logo após o texto */}
+          <div className="flex flex-col items-center gap-2.5 sm:gap-3.5 w-full mt-2 sm:mt-3 font-sans">
             
             {/* 1. Faça seu Pedido - Cardápio Online (Identidade Delivery / Âmbar) */}
             <a
@@ -52,18 +56,18 @@ export const Contact: React.FC = () => {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Fazer pedido no Cardápio Online Oficial El Chicano"
-              className="relative overflow-hidden group flex items-center justify-between p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] border-2 border-[#001219] shadow-[2.5px_2.5px_0px_#001219] sm:shadow-[4px_4px_0px_#001219] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer w-full"
+              className="relative overflow-hidden group inline-flex items-center justify-center gap-3.5 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] border-2 border-[#001219] shadow-[2.5px_2.5px_0px_#001219] sm:shadow-[4px_4px_0px_#001219] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer w-fit max-w-full"
             >
               <span className="absolute inset-0 -translate-x-full animate-cta-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
               <div className="flex items-center gap-3 relative z-10">
-                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-[#001219] border-2 border-[#001219] shadow-sm shrink-0">
-                  <ShoppingBag className="w-5 h-5 text-[#CA6702]" />
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white flex items-center justify-center text-[#001219] border-2 border-[#001219] shadow-sm shrink-0">
+                  <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-[#CA6702]" />
                 </div>
                 <div className="flex flex-col text-left">
                   <span className="text-[8.5px] sm:text-[9.5px] font-mono text-[#001219]/70 uppercase tracking-widest font-black leading-none">
                     Delivery Oficial
                   </span>
-                  <span className="text-xs sm:text-base font-black text-[#001219] mt-0.5 font-display tracking-wide">
+                  <span className="text-xs sm:text-sm font-black text-[#001219] mt-0.5 font-display tracking-wide whitespace-nowrap">
                     FAÇA SEU PEDIDO ONLINE
                   </span>
                 </div>
@@ -77,17 +81,17 @@ export const Contact: React.FC = () => {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Conversar com El Chicano Floripa no WhatsApp"
-              className="relative overflow-hidden group flex items-center justify-between p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white hover:bg-[#F0FDF4] border-2 border-[#001219] shadow-[2.5px_2.5px_0px_#001219] sm:shadow-[4px_4px_0px_#001219] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer w-full"
+              className="relative overflow-hidden group inline-flex items-center justify-center gap-3.5 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl bg-white hover:bg-[#F0FDF4] border-2 border-[#001219] shadow-[2.5px_2.5px_0px_#001219] sm:shadow-[4px_4px_0px_#001219] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer w-fit max-w-full"
             >
               <div className="flex items-center gap-3 relative z-10">
-                <div className="w-10 h-10 rounded-xl bg-[#25D366] flex items-center justify-center text-white border-2 border-[#001219] shadow-sm shrink-0">
-                  <MessageCircle className="w-5 h-5 fill-current" />
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#25D366] flex items-center justify-center text-white border-2 border-[#001219] shadow-sm shrink-0">
+                  <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
                 </div>
                 <div className="flex flex-col text-left">
                   <span className="text-[8.5px] sm:text-[9.5px] font-mono text-[#166534] uppercase tracking-widest font-black leading-none">
                     Atendimento Direto
                   </span>
-                  <span className="text-xs sm:text-sm font-black text-[#001219] mt-0.5 font-sans">
+                  <span className="text-xs sm:text-sm font-black text-[#001219] mt-0.5 font-sans whitespace-nowrap">
                     WhatsApp: <span className="font-mono text-[#005f73] font-bold">(48) 99652-0836</span>
                   </span>
                 </div>
@@ -101,17 +105,17 @@ export const Contact: React.FC = () => {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Seguir @elchicanofloripa no Instagram"
-              className="relative overflow-hidden group flex items-center justify-between p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white hover:bg-[#FDF2F8] border-2 border-[#001219] shadow-[2.5px_2.5px_0px_#001219] sm:shadow-[4px_4px_0px_#001219] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer w-full"
+              className="relative overflow-hidden group inline-flex items-center justify-center gap-3.5 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl bg-white hover:bg-[#FDF2F8] border-2 border-[#001219] shadow-[2.5px_2.5px_0px_#001219] sm:shadow-[4px_4px_0px_#001219] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer w-fit max-w-full"
             >
               <div className="flex items-center gap-3 relative z-10">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#833AB4] via-[#FD1D1D] to-[#F77737] flex items-center justify-center text-white border-2 border-[#001219] shadow-sm shrink-0">
-                  <Instagram className="w-5 h-5 text-white" />
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-[#833AB4] via-[#FD1D1D] to-[#F77737] flex items-center justify-center text-white border-2 border-[#001219] shadow-sm shrink-0">
+                  <Instagram className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
                 <div className="flex flex-col text-left">
                   <span className="text-[8.5px] sm:text-[9.5px] font-mono text-[#9D174D] uppercase tracking-widest font-black leading-none">
                     Rede Oficial
                   </span>
-                  <span className="text-xs sm:text-sm font-black text-[#001219] mt-0.5 font-sans">
+                  <span className="text-xs sm:text-sm font-black text-[#001219] mt-0.5 font-sans whitespace-nowrap">
                     Instagram: <span className="font-mono text-[#005f73] font-bold">@elchicanofloripa</span>
                   </span>
                 </div>
@@ -123,10 +127,11 @@ export const Contact: React.FC = () => {
         </div>
       </div>
 
+      {/* Immersive Light Divider connecting Contact (cream) to Footer (dark) */}
+      <SectionDivider position="bottom" variant="warm" blend="cream-to-dark" />
+
       {/* Desktop Bottom Transition */}
       <div className="hidden sm:block absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent via-[#001219]/80 to-[#001219] pointer-events-none z-[2]" />
-      <div className="hidden sm:block section-divider-cool" />
-      <div className="hidden sm:block section-divider-glow-cool" />
     </section>
   );
 };

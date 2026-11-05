@@ -26,7 +26,7 @@ export const FloatingActions: React.FC = () => {
   };
 
   return (
-    <div className="fixed right-3 sm:right-5 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-3 sm:gap-3.5 items-center">
+    <div className="fixed right-4 bottom-4 sm:bottom-auto sm:right-5 sm:top-1/2 sm:-translate-y-1/2 z-50 flex flex-col gap-2.5 sm:gap-3.5 items-center">
       {/* WhatsApp Pulse Action */}
       <a
         href={SITE_INFO.whatsappFloripaUrl}
