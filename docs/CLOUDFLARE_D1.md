@@ -92,8 +92,8 @@ VALUES ('novo-01', 'Taco Especial da Estação', 'Duplas de tacos', 'Receita saz
 ## 5. Estratégia de Performance Máxima
 
 1. **Latência Zero na Renderização (0ms):**
-   O frontend utiliza o padrão **Stale-While-Revalidate** via [d1Api.ts](file:///c:/Users/ricop/Documents/El%20Chicano/src/services/d1Api.ts). A página carrega instantaneamente do bundle local/localStorage e, em background, busca atualizações na Edge da Cloudflare.
+   O frontend utiliza o padrão **Stale-While-Revalidate** via [d1Api.ts](file:///c:/Projetos/El%20Chicano/src/services/d1Api.ts). A página carrega instantaneamente do bundle local/localStorage e, em background, busca atualizações na Edge da Cloudflare.
 2. **Cache na Borda (Edge Caching):**
-   O Worker [worker/index.ts](file:///c:/Users/ricop/Documents/El%20Chicano/worker/index.ts) injeta cabeçalhos HTTP:
+   O Worker [worker/index.ts](file:///c:/Projetos/El%20Chicano/worker/index.ts) injeta cabeçalhos HTTP:
    `Cache-Control: public, max-age=60, s-maxage=3600, stale-while-revalidate=86400`
    Isso significa que requisições subsequentes são respondidas diretamente pelo cache CDN mais próximo do cliente em menos de 15ms.

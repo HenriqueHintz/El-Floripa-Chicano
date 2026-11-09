@@ -56,7 +56,7 @@ Reconstrução autêntica e de alta fidelidade do portal oficial [El Chicano Mex
 ### 2. Instalação e Execução
 ```bash
 # Acesse o diretório do projeto
-cd "C:\Users\ricop\Documents\El Chicano"
+cd "C:\Projetos\El Chicano"
 
 # Instale as dependências (já instaladas)
 npm install
