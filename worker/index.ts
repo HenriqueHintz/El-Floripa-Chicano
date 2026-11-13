@@ -3,6 +3,7 @@ export interface Env {
   ASSETS: Fetcher;
   ADMIN_API_KEY?: string;
   ADMIN_HASH?: string;
+  SESSION_SECRET?: string;
 }
 
 const CORS_HEADERS = {
@@ -48,23 +49,147 @@ function sanitize(input: unknown, maxLength = 500): string {
     .slice(0, maxLength);
 }
 
+// -----------------------------------------------------------------------------
+// Autenticação do painel (feita no servidor)
+// -----------------------------------------------------------------------------
+
+// Hash PBKDF2 inicial de fábrica (mesmo do frontend). Vale só até a primeira troca de senha,
+// que grava o novo hash na tabela admin_credentials. O segredo ADMIN_HASH, se definido, tem prioridade.
+const INITIAL_MASTER_HASH =
+  'pbkdf2:sha256:100000:220a7baee7f6958ca584c9e82fd51878:5f2e8a4a36c173b223b8b001c924b199d9c20651550e9cac054ecebae4bc4347';
+const SESSION_TTL_MS = 4 * 60 * 60 * 1000; // 4 horas
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // janela de contagem de falhas
+const LOGIN_MAX_FAILURES = 8;
+const VALID_USERNAMES = ['admin', 'elchicano'];
+
+const enc = new TextEncoder();
+
+function toHex(buf: ArrayBuffer | Uint8Array): string {
+  return Array.from(buf instanceof Uint8Array ? buf : new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function fromHex(hex: string): Uint8Array {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return out;
+}
+
+function b64url(bytes: Uint8Array): string {
+  let bin = '';
+  bytes.forEach((b) => (bin += String.fromCharCode(b)));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function fromB64url(s: string): Uint8Array {
+  const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4));
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+}
+
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
+
+async function pbkdf2Hex(password: string, saltHex: string, iterations: number): Promise<string> {
+  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: fromHex(saltHex), iterations, hash: 'SHA-256' },
+    key,
+    256
+  );
+  return toHex(bits);
+}
+
+async function verifyPasswordHash(password: string, formatted: string): Promise<boolean> {
+  const parts = formatted.split(':');
+  if (parts.length !== 5 || parts[0] !== 'pbkdf2' || parts[1] !== 'sha256') return false;
+  const iterations = Number(parts[2]);
+  if (!Number.isFinite(iterations) || iterations < 1 || iterations > 100000) return false;
+  return safeEqual(await pbkdf2Hex(password, parts[3], iterations), parts[4]);
+}
+
+async function createPasswordHash(password: string): Promise<string> {
+  const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
+  return `pbkdf2:sha256:100000:${salt}:${await pbkdf2Hex(password, salt, 100000)}`;
+}
+
+async function ensureAuthTables(env: Env): Promise<void> {
+  await env.DB.batch([
+    env.DB.prepare(
+      'CREATE TABLE IF NOT EXISTS admin_credentials (id INTEGER PRIMARY KEY CHECK (id = 1), password_hash TEXT NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)'
+    ),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS admin_login_attempts (ip TEXT NOT NULL, ts INTEGER NOT NULL)'),
+  ]);
+}
+
+async function getActiveAdminHash(env: Env): Promise<string> {
+  try {
+    const row = await env.DB.prepare('SELECT password_hash FROM admin_credentials WHERE id = 1').first<{
+      password_hash: string;
+    }>();
+    if (row?.password_hash) return row.password_hash;
+  } catch {
+    // tabela ainda não criada
+  }
+  return env.ADMIN_HASH || INITIAL_MASTER_HASH;
+}
+
+// A chave de assinatura inclui o hash atual: trocar a senha invalida todas as sessões antigas.
+async function getSigningKey(env: Env, activeHash: string): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    'raw',
+    enc.encode(`${env.SESSION_SECRET}:${activeHash}`),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify']
+  );
+}
+
+async function issueSessionToken(env: Env, username: string): Promise<{ token: string; expiresAt: number }> {
+  const now = Date.now();
+  const expiresAt = now + SESSION_TTL_MS;
+  const payload = b64url(enc.encode(JSON.stringify({ sub: username, iat: now, exp: expiresAt })));
+  const key = await getSigningKey(env, await getActiveAdminHash(env));
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(payload)));
+  return { token: `${payload}.${b64url(sig)}`, expiresAt };
+}
+
+async function verifySessionToken(env: Env, token: string): Promise<boolean> {
+  if (!env.SESSION_SECRET) return false;
+  const [payload, sig, extra] = token.split('.');
+  if (!payload || !sig || extra !== undefined) return false;
+  try {
+    const key = await getSigningKey(env, await getActiveAdminHash(env));
+    const ok = await crypto.subtle.verify('HMAC', key, fromB64url(sig), enc.encode(payload));
+    if (!ok) return false;
+    const data = JSON.parse(new TextDecoder().decode(fromB64url(payload))) as { exp?: number };
+    return typeof data.exp === 'number' && Date.now() < data.exp;
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Helper to verify authorization headers for protected administrative routes
+ * Verifica o cabeçalho Authorization das rotas administrativas.
+ * Aceita a chave ADMIN_API_KEY (scripts) ou um token de sessão assinado pelo servidor.
  */
-function isAuthorized(request: Request, env: Env): boolean {
+async function isAuthorized(request: Request, env: Env): Promise<boolean> {
   const auth = request.headers.get('Authorization');
   if (!auth) return false;
 
   const token = auth.replace(/^Bearer\s+/i, '').trim();
   if (!token) return false;
 
-  // 1. If worker has configured ADMIN_API_KEY, enforce exact match
-  if (env.ADMIN_API_KEY) {
-    return token === env.ADMIN_API_KEY;
-  }
+  if (env.ADMIN_API_KEY && safeEqual(token, env.ADMIN_API_KEY)) return true;
+  return verifySessionToken(env, token);
+}
 
-  // 2. Validate token structure (signed session token format requires at least 32 characters)
-  return token.length >= 32;
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: NO_CACHE_HEADERS });
 }
 
 export default {
@@ -79,6 +204,72 @@ export default {
     // API Routes for Cloudflare D1
     if (url.pathname.startsWith('/api/')) {
       try {
+        // POST /api/auth/login - Confere usuário/senha no servidor e devolve token assinado
+        if (url.pathname === '/api/auth/login' && request.method === 'POST') {
+          if (!env.SESSION_SECRET) {
+            return json({ error: 'Servidor sem SESSION_SECRET configurado' }, 503);
+          }
+          await ensureAuthTables(env);
+
+          const ip = request.headers.get('CF-Connecting-IP') || 'desconhecido';
+          const since = Date.now() - LOGIN_WINDOW_MS;
+          await env.DB.prepare('DELETE FROM admin_login_attempts WHERE ts < ?').bind(since).run();
+          const fails = await env.DB.prepare('SELECT COUNT(*) AS n FROM admin_login_attempts WHERE ip = ?')
+            .bind(ip)
+            .first<{ n: number }>();
+          if ((fails?.n ?? 0) >= LOGIN_MAX_FAILURES) {
+            return json({ error: 'Muitas tentativas incorretas. Aguarde 15 minutos e tente novamente.' }, 429);
+          }
+
+          const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+          const username = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
+          const password = typeof body.password === 'string' ? body.password : '';
+          const passwordOk = password.length > 0 && password.length <= 200
+            ? await verifyPasswordHash(password, await getActiveAdminHash(env))
+            : false;
+
+          if (!passwordOk || !VALID_USERNAMES.includes(username)) {
+            await env.DB.prepare('INSERT INTO admin_login_attempts (ip, ts) VALUES (?, ?)').bind(ip, Date.now()).run();
+            const left = Math.max(0, LOGIN_MAX_FAILURES - (fails?.n ?? 0) - 1);
+            return json({ error: 'Usuário ou senha inválidos', attemptsLeft: left }, 401);
+          }
+
+          await env.DB.prepare('DELETE FROM admin_login_attempts WHERE ip = ?').bind(ip).run();
+          const { token, expiresAt } = await issueSessionToken(env, username);
+          return json({ success: true, token, expiresAt });
+        }
+
+        // GET /api/auth/session - Confirma se o token ainda é válido
+        if (url.pathname === '/api/auth/session' && request.method === 'GET') {
+          return (await isAuthorized(request, env)) ? json({ success: true }) : json({ error: 'Sessão inválida' }, 401);
+        }
+
+        // POST /api/auth/password - Troca a senha (exige sessão válida + senha atual)
+        if (url.pathname === '/api/auth/password' && request.method === 'POST') {
+          if (!(await isAuthorized(request, env))) {
+            return json({ error: 'Acesso não autorizado' }, 401);
+          }
+          await ensureAuthTables(env);
+          const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+          const current = typeof body.currentPassword === 'string' ? body.currentPassword : '';
+          const next = typeof body.newPassword === 'string' ? body.newPassword : '';
+          if (next.length < 8 || next.length > 200) {
+            return json({ error: 'A nova senha deve ter entre 8 e 200 caracteres' }, 400);
+          }
+          if (!(await verifyPasswordHash(current, await getActiveAdminHash(env)))) {
+            return json({ error: 'A senha atual informada está incorreta' }, 403);
+          }
+          const newHash = await createPasswordHash(next);
+          await env.DB.prepare(
+            'INSERT INTO admin_credentials (id, password_hash, updated_at) VALUES (1, ?, CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET password_hash = excluded.password_hash, updated_at = CURRENT_TIMESTAMP'
+          )
+            .bind(newHash)
+            .run();
+          // O hash mudou, então a chave de assinatura mudou: emite um token novo para esta sessão
+          const { token, expiresAt } = await issueSessionToken(env, 'admin');
+          return json({ success: true, token, expiresAt });
+        }
+
         // POST /api/telemetry - Anonymous RUM Core Web Vitals telemetry receiver
         if (url.pathname === '/api/telemetry' && request.method === 'POST') {
           return new Response(JSON.stringify({ success: true }), {
@@ -141,7 +332,7 @@ export default {
 
         // POST /api/monthly-updates - Register monthly menu update (PROTECTED)
         if (url.pathname === '/api/monthly-updates' && request.method === 'POST') {
-          if (!isAuthorized(request, env)) {
+          if (!(await isAuthorized(request, env))) {
             return new Response(JSON.stringify({ error: 'Acesso não autorizado' }), {
               status: 401,
               headers: CORS_HEADERS,
@@ -173,7 +364,7 @@ export default {
 
         // POST /api/products/price - Quick monthly price adjustment (PROTECTED)
         if (url.pathname === '/api/products/price' && request.method === 'POST') {
-          if (!isAuthorized(request, env)) {
+          if (!(await isAuthorized(request, env))) {
             return new Response(JSON.stringify({ error: 'Acesso não autorizado' }), {
               status: 401,
               headers: CORS_HEADERS,
@@ -201,7 +392,7 @@ export default {
 
         // GET /api/leads - List franchise leads (PROTECTED - PII & LGPD DEFENSE)
         if (url.pathname === '/api/leads' && request.method === 'GET') {
-          if (!isAuthorized(request, env)) {
+          if (!(await isAuthorized(request, env))) {
             return new Response(JSON.stringify({ error: 'Acesso restrito ao painel administrativo' }), {
               status: 401,
               headers: CORS_HEADERS,
@@ -278,7 +469,7 @@ export default {
 
         // PATCH /api/leads - Update lead status (PROTECTED)
         if (url.pathname === '/api/leads' && request.method === 'PATCH') {
-          if (!isAuthorized(request, env)) {
+          if (!(await isAuthorized(request, env))) {
             return new Response(JSON.stringify({ error: 'Acesso não autorizado' }), {
               status: 401,
               headers: CORS_HEADERS,
@@ -304,7 +495,7 @@ export default {
 
         // DELETE /api/leads - Delete one lead ({ id }) or all leads (?all=true) (PROTECTED)
         if (url.pathname === '/api/leads' && request.method === 'DELETE') {
-          if (!isAuthorized(request, env)) {
+          if (!(await isAuthorized(request, env))) {
             return new Response(JSON.stringify({ error: 'Acesso não autorizado' }), {
               status: 401,
               headers: NO_CACHE_HEADERS,
@@ -345,7 +536,7 @@ export default {
 
         // POST /api/gallery - Upsert gallery post slot (PROTECTED)
         if (url.pathname === '/api/gallery' && request.method === 'POST') {
-          if (!isAuthorized(request, env)) {
+          if (!(await isAuthorized(request, env))) {
             return new Response(JSON.stringify({ error: 'Acesso não autorizado' }), {
               status: 401,
               headers: CORS_HEADERS,
@@ -414,7 +605,7 @@ export default {
 
         // DELETE /api/gallery - Delete slot or clear all (PROTECTED)
         if (url.pathname === '/api/gallery' && request.method === 'DELETE') {
-          if (!isAuthorized(request, env)) {
+          if (!(await isAuthorized(request, env))) {
             return new Response(JSON.stringify({ error: 'Acesso não autorizado' }), {
               status: 401,
               headers: CORS_HEADERS,

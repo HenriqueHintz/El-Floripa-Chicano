@@ -41,3 +41,7 @@ __pycache__/
 *.py[cod]
 .serena/
 
+
+# Cloudflare Wrangler (segredos locais e estado do dev)
+.dev.vars
+.wrangler/

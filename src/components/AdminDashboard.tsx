@@ -60,14 +60,8 @@ import { subscribeRealtime } from '../utils/realtime';
 import { InstagramIcon as Instagram, WhatsAppIcon } from './Icons';
 import { Logo } from './Logo';
 import { AdminLogin } from './AdminLogin';
-import { 
-  getActiveSessionToken, 
-  verifySessionToken, 
-  destroySession, 
-  verifyPassword, 
-  updateAdminPassword, 
-  getActiveAdminHash 
-} from '../utils/security';
+import { getActiveSessionToken, destroySession } from '../utils/security';
+import { checkAdminSession, changeAdminPassword } from '../services/authApi';
 
 interface AdminDashboardProps {
   onBackToHome: () => void;
@@ -155,8 +149,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         setIsAuthenticated(false);
         return;
       }
-      const verified = await verifySessionToken(token);
-      if (!verified.valid) {
+      const valid = await checkAdminSession();
+      if (!valid) {
         destroySession();
         setIsAuthenticated(false);
       }
@@ -269,22 +263,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     setIsUpdatingPwd(true);
 
     try {
-      const activeHash = getActiveAdminHash();
-      const isCurrentValid = await verifyPassword(pwdCurrent, activeHash);
-
-      if (!isCurrentValid) {
-        setPwdStatus({ type: 'error', message: 'A senha atual informada está incorreta.' });
+      const result = await changeAdminPassword(pwdCurrent, pwdNew);
+      if (!result.ok) {
+        setPwdStatus({ type: 'error', message: result.error || 'Não foi possível alterar a senha.' });
         setIsUpdatingPwd(false);
         return;
       }
-
-      await updateAdminPassword(pwdNew);
       setPwdCurrent('');
       setPwdNew('');
       setPwdConfirm('');
-      setPwdStatus({ 
-        type: 'success', 
-        message: 'Senha alterada com sucesso! O novo hash PBKDF2 com salt aleatório foi registrado com segurança.' 
+      setPwdStatus({
+        type: 'success',
+        message: 'Senha alterada com sucesso no servidor! Sessões abertas em outros aparelhos foram encerradas.'
       });
       setIsUpdatingPwd(false);
     } catch (err) {

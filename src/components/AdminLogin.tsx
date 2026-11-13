@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Lock, User, ShieldCheck, AlertCircle } from 'lucide-react';
 import { Logo } from './Logo';
-import { verifyPassword, createSessionToken, getActiveAdminHash } from '../utils/security';
+import { loginAdmin } from '../services/authApi';
 
 interface AdminLoginProps {
   onLoginSuccess: () => void;
@@ -33,38 +33,33 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
     setIsLoading(true);
 
     try {
-      const activeHash = getActiveAdminHash();
-      const isValid = await verifyPassword(password, activeHash);
+      // A senha é conferida no servidor (Cloudflare Worker), que devolve um token assinado
+      const result = await loginAdmin(username.trim().toLowerCase(), password);
 
-      // Verify username (standardized administrative handle)
-      const isUserValid = username.trim().toLowerCase() === 'admin' || username.trim().toLowerCase() === 'elchicano';
-
-      if (isValid && isUserValid) {
-        // Generate cryptographic signed session token
-        await createSessionToken(username.trim().toLowerCase());
+      if (result.ok) {
+        setPassword('');
         setFailedAttempts(0);
         setIsLoading(false);
         onLoginSuccess();
-      } else {
-        const nextAttempts = failedAttempts + 1;
-        setFailedAttempts(nextAttempts);
-
-        if (nextAttempts >= 5) {
-          setIsLocked(true);
-          setError('Múltiplas tentativas incorretas. Bloqueio de segurança ativado por 60 segundos.');
-          setTimeout(() => {
-            setIsLocked(false);
-            setFailedAttempts(0);
-            setError('');
-          }, 60000);
-        } else {
-          setError(`Credenciais inválidas. Verifique os dados digitados (${5 - nextAttempts} tentativas restantes).`);
-        }
-        setIsLoading(false);
+        return;
       }
+
+      const nextAttempts = failedAttempts + 1;
+      setFailedAttempts(nextAttempts);
+      if (nextAttempts >= 5) {
+        setIsLocked(true);
+        setTimeout(() => {
+          setIsLocked(false);
+          setFailedAttempts(0);
+          setError('');
+        }, 60000);
+      }
+      const left = typeof result.attemptsLeft === 'number' ? ` (${result.attemptsLeft} tentativas restantes)` : '';
+      setError(`${result.error || 'Credenciais inválidas.'}${left}`);
+      setIsLoading(false);
     } catch {
       setIsLoading(false);
-      setError('Erro interno de validação criptográfica. Tente novamente.');
+      setError('Erro ao validar o acesso. Tente novamente.');
     }
   };
 
