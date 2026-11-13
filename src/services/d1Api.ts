@@ -7,7 +7,6 @@ import {
   deleteAppJsonFromDB, 
   purgeLegacyLocalStorageBloat,
   getMediaFromDB,
-  saveMediaToDB,
   deleteMediaFromDB
 } from '../utils/mediaStorage';
 import { getActiveSessionToken, sanitizeString } from '../utils/security';
@@ -17,7 +16,9 @@ const CACHE_KEY_MENU = 'elchicano_d1_menu_cache';
 const CACHE_KEY_SETTINGS = 'elchicano_d1_settings_cache';
 const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour client cache
 
-export const CLOUDFLARE_WORKER_API = 'https://el-chicano-api.rico-pompeo.workers.dev';
+// Em desenvolvimento dá para apontar para um Worker local com VITE_API_URL no .env.local
+export const CLOUDFLARE_WORKER_API =
+  (import.meta.env.DEV && import.meta.env.VITE_API_URL) || 'https://el-chicano-api.rico-pompeo.workers.dev';
 
 export function getApiUrl(path: string): string {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
@@ -334,6 +335,12 @@ const DEFAULT_GALLERY_SLOTS: D1GalleryPost[] = [1, 2, 3, 4, 5, 6, 7].map((num) =
   is_active: 0,
 }));
 
+const isLocalOnlyUrl = (u?: string) => Boolean(u && (u.startsWith('blob:') || u.startsWith('data:')));
+
+/**
+ * Lê os 7 slots da galeria. O servidor (D1) é a fonte da verdade: o cache local
+ * só é usado se a API estiver fora do ar.
+ */
 export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
   let posts: D1GalleryPost[] = [];
   let serverResponded = false;
@@ -345,12 +352,17 @@ export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
       if (contentType.includes('application/json')) {
         const payload = await res.json();
         if (payload?.success && Array.isArray(payload.posts)) {
-          // O servidor é a fonte da verdade: lista vazia significa "tudo excluído",
-          // não "use o cache local".
+          // Lista vazia = tudo excluído. Mídias "blob:" antigas nunca funcionaram para visitantes.
           posts = (payload.posts as D1GalleryPost[]).filter(
             (p) => !String(p.media_url || '').startsWith('blob:')
           );
           serverResponded = true;
+          try {
+            localStorage.setItem(
+              LOCAL_STORAGE_GALLERY_KEY,
+              JSON.stringify(posts.filter((p) => !isLocalOnlyUrl(p.media_url)))
+            );
+          } catch {}
         }
       }
     }
@@ -359,11 +371,10 @@ export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
   if (!serverResponded) {
     try {
       const local = localStorage.getItem(LOCAL_STORAGE_GALLERY_KEY);
-      if (local) posts = JSON.parse(local);
+      if (local) posts = (JSON.parse(local) as D1GalleryPost[]).filter((p) => !isLocalOnlyUrl(p.media_url));
     } catch {}
   }
 
-  // Ensure all 7 slots exist in the working array
   const fullSlotsMap = new Map<number, D1GalleryPost>();
   DEFAULT_GALLERY_SLOTS.forEach((slot) => fullSlotsMap.set(slot.slot_number, { ...slot }));
   posts.forEach((p) => {
@@ -373,144 +384,73 @@ export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
     }
   });
 
-  const merged = Array.from(fullSlotsMap.values()).sort((a, b) => a.slot_number - b.slot_number);
-
-  // Hydrate with local IndexedDB files if available
-  const hydrated = await Promise.all(
-    merged.map(async (p) => {
-      const localMedia = await getMediaFromDB(`slot_${p.slot_number}`);
-      if (localMedia) {
-        return {
-          ...p,
-          media_url: localMedia,
-          thumbnail_url: localMedia,
-          is_active: p.is_active !== undefined ? p.is_active : 1,
-        };
-      }
-      return p;
-    })
-  );
-
-  return hydrated;
+  return Array.from(fullSlotsMap.values()).sort((a, b) => a.slot_number - b.slot_number);
 }
 
+/**
+ * Envia um arquivo (foto, vídeo ou miniatura) para o servidor e devolve a URL pública.
+ * O arquivo fica guardado no D1 e é entregue pelo Worker em /media/<chave>.
+ */
+export async function uploadGalleryMedia(
+  file: Blob,
+  slotNumber: number
+): Promise<{ ok: boolean; url: string; error?: string }> {
+  const token = getActiveSessionToken();
+  if (!token) return { ok: false, url: '', error: 'Sessão expirada. Entre novamente no painel.' };
+  const type = file.type || 'application/octet-stream';
+  try {
+    const res = await fetch(getApiUrl(`/api/media?slot=${Number(slotNumber) || 0}`), {
+      method: 'POST',
+      headers: { 'Content-Type': type, Authorization: `Bearer ${token}` },
+      body: file,
+      cache: 'no-store',
+    });
+    const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+    if (!res.ok || !data.url) {
+      return { ok: false, url: '', error: data.error || `Falha no envio (HTTP ${res.status})` };
+    }
+    return { ok: true, url: data.url };
+  } catch {
+    return { ok: false, url: '', error: 'Sem conexão com o servidor. Verifique sua internet.' };
+  }
+}
+
+/**
+ * Salva/atualiza um slot no D1 e avisa as outras abas. Retorna false se o servidor recusar.
+ */
 export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
   const slotNum = Number(post.slot_number);
+  if (!post.media_url || post.media_url.startsWith('blob:')) return false;
+  if (post.media_url.length >= 2000000) return false;
 
-  // 1. If media is a data: URL or blob:, make sure it is safely persisted in IndexedDB
-  if (post.media_url && post.media_url.startsWith('data:')) {
-    try {
-      const res = await fetch(post.media_url);
-      const blob = await res.blob();
-      await saveMediaToDB(`slot_${slotNum}`, blob, `slot_${slotNum}.webp`, post.media_url);
-    } catch (e) {
-      console.warn('Error saving data: URL to IndexedDB:', e);
-    }
-  } else if (!post.media_url) {
-    await deleteMediaFromDB(`slot_${slotNum}`);
-  }
-
-  // 2. Update localStorage strictly with metadata (NEVER store heavy Base64 data: or blob: strings in localStorage)
-  try {
-    const rawLocal = localStorage.getItem(LOCAL_STORAGE_GALLERY_KEY);
-    let existing: D1GalleryPost[] = [];
-    if (rawLocal) {
-      try {
-        existing = JSON.parse(rawLocal);
-      } catch {}
-    }
-
-    // Strip bulky Base64 from all existing records to permanently prevent QuotaExceededError
-    const filtered: D1GalleryPost[] = existing
-      .filter((p) => Number(p.slot_number) !== slotNum)
-      .map((p) => ({
-        ...p,
-        media_url: p.media_url && !p.media_url.startsWith('data:') && !p.media_url.startsWith('blob:') ? p.media_url : '',
-        thumbnail_url: '',
-      }));
-
-    const isLocalData = post.media_url && (post.media_url.startsWith('data:') || post.media_url.startsWith('blob:'));
-    const postToStore: D1GalleryPost = {
-      ...post,
-      slot_number: slotNum,
-      // External URLs are stored directly; local files live in IndexedDB
-      media_url: isLocalData ? '' : (post.media_url || ''),
-      thumbnail_url: '',
-      is_active: post.is_active !== undefined ? post.is_active : 1,
-      updated_at: new Date().toISOString(),
-    };
-
-    filtered.push(postToStore);
-    filtered.sort((a, b) => Number(a.slot_number) - Number(b.slot_number));
-    localStorage.setItem(LOCAL_STORAGE_GALLERY_KEY, JSON.stringify(filtered));
-  } catch (err) {
-    console.warn('LocalStorage save warning:', err);
-  }
-
-  // 3. Envia ao D1 (fonte usada pelo site público) e aguarda a confirmação
   let serverOk = false;
-  if (post.media_url?.startsWith('blob:')) {
-    // blob: só existe neste navegador — publicar quebraria a galeria para os visitantes
-    console.warn('Mídia local (blob:) não pode ser publicada no D1. Use foto ou link externo.');
-  } else if ((post.media_url?.length || 0) < 2000000) {
-    try {
-      const res = await fetch(getApiUrl('/api/gallery'), {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify(post),
-        cache: 'no-store',
-      });
-      serverOk = res.ok;
-    } catch (err) {
-      console.warn('Erro de rede ao salvar slot no D1:', err);
-    }
-  } else {
-    console.warn('Mídia acima de 2 MB não é enviada ao D1.');
+  try {
+    const res = await fetch(getApiUrl('/api/gallery'), {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ ...post, slot_number: slotNum, is_active: 1 }),
+      cache: 'no-store',
+    });
+    serverOk = res.ok;
+  } catch (err) {
+    console.warn('Erro de rede ao salvar slot no D1:', err);
   }
 
-  // 4. Rebroadcast com o estado atualizado
   try {
-    const allHydrated = await getD1GalleryPosts();
-    broadcastRealtime('GALLERY_UPDATED', allHydrated);
-  } catch (e) {
-    console.warn('Realtime broadcast error:', e);
-  }
+    broadcastRealtime('GALLERY_UPDATED', await getD1GalleryPosts());
+  } catch {}
 
   return serverOk;
 }
 
 /**
- * Completely clears / deletes a gallery slot, wiping IndexedDB and localStorage in real-time.
+ * Exclui um slot no D1 (o Worker também apaga o arquivo de mídia dele).
  */
 export async function clearD1GallerySlot(slotNumber: number): Promise<boolean> {
   const slotNum = Number(slotNumber);
+  // Remove sobras do antigo armazenamento local (IndexedDB), se houver
+  await deleteMediaFromDB(`slot_${slotNum}`).catch(() => {});
 
-  // 1. Delete from IndexedDB immediately
-  await deleteMediaFromDB(`slot_${slotNum}`);
-
-  // 2. Clear in localStorage immediately
-  const emptyPost: D1GalleryPost = {
-    slot_number: slotNum,
-    type: 'photo',
-    media_url: '',
-    thumbnail_url: '',
-    permalink: 'https://www.instagram.com/elchicanofloripa/',
-    caption: '',
-    is_active: 0,
-    updated_at: new Date().toISOString(),
-  };
-
-  try {
-    const existing: D1GalleryPost[] = JSON.parse(localStorage.getItem(LOCAL_STORAGE_GALLERY_KEY) || '[]');
-    const filtered = existing.filter((p) => Number(p.slot_number) !== slotNum);
-    filtered.push(emptyPost);
-    filtered.sort((a, b) => a.slot_number - b.slot_number);
-    localStorage.setItem(LOCAL_STORAGE_GALLERY_KEY, JSON.stringify(filtered));
-  } catch (err) {
-    console.warn('Error clearing slot in localStorage:', err);
-  }
-
-  // 4. Exclui no D1 (fonte usada pelo site público) e só confirma se o servidor aceitar
   let serverOk = false;
   try {
     const res = await fetch(getApiUrl('/api/gallery'), {
@@ -524,10 +464,8 @@ export async function clearD1GallerySlot(slotNumber: number): Promise<boolean> {
     console.warn('Erro de rede ao excluir slot no D1:', err);
   }
 
-  // 5. Rebroadcast com o estado real do servidor
   try {
-    const allHydrated = await getD1GalleryPosts();
-    broadcastRealtime('GALLERY_UPDATED', allHydrated);
+    broadcastRealtime('GALLERY_UPDATED', await getD1GalleryPosts());
   } catch {}
 
   return serverOk;

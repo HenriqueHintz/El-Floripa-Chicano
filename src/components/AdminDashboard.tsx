@@ -8,6 +8,7 @@ import {
   getD1GalleryPosts, 
   saveD1GalleryPost, 
   clearD1GallerySlot,
+  uploadGalleryMedia,
   D1GalleryPost,
   getFranchiseVideoConfig,
   saveFranchiseVideoConfig,
@@ -392,30 +393,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       let mediaUrl = '';
       let thumbUrl = '';
       let fileNote = '';
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
 
       if (isVideo) {
-        setSlotFileNote('Extraindo miniatura e processando vídeo...');
+        if (file.size > 60 * 1024 * 1024) {
+          throw new Error(`o vídeo tem ${sizeMb} MB; o limite é 60 MB. Comprima o vídeo e tente de novo.`);
+        }
+        // Alguns celulares enviam .mov/.m4v sem tipo: define o tipo pela extensão
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        const mime = file.type || (ext === 'mov' ? 'video/quicktime' : ext === 'webm' ? 'video/webm' : 'video/mp4');
+        const videoBlob = file.type ? file : new Blob([file], { type: mime });
+
+        setSlotFileNote('Gerando miniatura (primeiro quadro)...');
         const thumbDataUrl = await extractVideoThumbnail(file);
-        const { url, sizeMb } = await saveMediaToDB(
-          `slot_${targetSlot}`,
-          file,
-          file.name
-        );
-        mediaUrl = url;
-        thumbUrl = thumbDataUrl || url;
-        fileNote = `Vídeo importado: ${file.name} (${sizeMb} MB)`;
+
+        setSlotFileNote(`Enviando vídeo (${sizeMb} MB) para o servidor...`);
+        const up = await uploadGalleryMedia(videoBlob, targetSlot);
+        if (!up.ok) throw new Error(up.error);
+        mediaUrl = up.url;
+
+        if (thumbDataUrl) {
+          const thumbBlob = await (await fetch(thumbDataUrl)).blob();
+          const thumbUp = await uploadGalleryMedia(thumbBlob, targetSlot);
+          if (thumbUp.ok) thumbUrl = thumbUp.url;
+        }
+        fileNote = `Vídeo enviado: ${file.name} (${sizeMb} MB)`;
       } else {
-        setSlotFileNote('Otimizando imagem para alta performance...');
-        const { blob, dataUrl, sizeMb } = await compressImage(file, 1600, 1600, 0.85);
-        await saveMediaToDB(
-          `slot_${targetSlot}`,
-          blob,
-          file.name,
-          dataUrl
-        );
-        mediaUrl = dataUrl;
-        thumbUrl = dataUrl;
-        fileNote = `Foto importada: ${file.name} (${sizeMb} MB)`;
+        setSlotFileNote('Otimizando imagem...');
+        const { blob, sizeMb: optimizedMb } = await compressImage(file, 1600, 1600, 0.85);
+        setSlotFileNote('Enviando foto para o servidor...');
+        const up = await uploadGalleryMedia(blob, targetSlot);
+        if (!up.ok) throw new Error(up.error);
+        mediaUrl = up.url;
+        thumbUrl = up.url;
+        fileNote = `Foto enviada: ${file.name} (${optimizedMb} MB)`;
       }
 
       const updatedPost: D1GalleryPost = {
@@ -432,23 +443,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
 
       setSlotForm(updatedPost);
       setSlotFileNote(fileNote);
-
-      // 1. Instant Optimistic Update across all slots
       setGalleryPosts((prev) => {
         const filtered = prev.filter((p) => Number(p.slot_number) !== targetSlot);
         return [...filtered, updatedPost].sort((a, b) => Number(a.slot_number) - Number(b.slot_number));
       });
 
-      // 2. Direct Auto-Save to IndexedDB, LocalStorage & D1 (Broadcasting in 0ms to public site)
+      // Publica o slot no D1 (o site público lê daqui)
       const ok = await saveD1GalleryPost(updatedPost);
-
-      setSaveStatus(
-        ok
-          ? `Slot #${targetSlot} salvo e ativo no site!`
-          : isVideo
-            ? `Vídeo salvo só neste aparelho — vídeos ainda não são publicados no site`
-            : `Salvo só neste aparelho — falha ao publicar no site`
-      );
+      setSaveStatus(ok ? `Slot #${targetSlot} salvo e ativo no site!` : `Arquivo enviado, mas falhou ao salvar o slot. Clique em Salvar.`);
       setTimeout(() => setSaveStatus(''), ok ? 4000 : 7000);
     } catch (err) {
       console.error('File upload error:', err);
@@ -1251,7 +1253,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                     {slotForm.media_url ? (
                       slotForm.type === 'video' ? (
                         <video
+                          key={slotForm.media_url}
                           src={slotForm.media_url}
+                          poster={slotForm.thumbnail_url && slotForm.thumbnail_url !== slotForm.media_url ? slotForm.thumbnail_url : undefined}
                           autoPlay
                           loop
                           muted

@@ -52,7 +52,7 @@ export const Gallery: React.FC = () => {
     const refreshGallery = () => {
       getD1GalleryPosts().then((posts) => {
         if (isMounted && posts && Array.isArray(posts)) {
-          setD1Posts(posts);
+          setD1Posts((prev) => (JSON.stringify(prev) === JSON.stringify(posts) ? prev : posts));
         }
       });
     };
@@ -86,8 +86,14 @@ export const Gallery: React.FC = () => {
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('storage', handleStorage);
 
+    // 4. Atualização automática para visitantes em outros aparelhos (só com a aba visível)
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === 'visible') refreshGallery();
+    }, 20000);
+
     return () => {
       isMounted = false;
+      window.clearInterval(poll);
       unsub();
       window.removeEventListener('focus', refreshGallery);
       document.removeEventListener('visibilitychange', handleVisibility);

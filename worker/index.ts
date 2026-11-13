@@ -188,6 +188,165 @@ async function isAuthorized(request: Request, env: Env): Promise<boolean> {
   return verifySessionToken(env, token);
 }
 
+// -----------------------------------------------------------------------------
+// Armazenamento de mídia no D1 (fotos e vídeos da galeria, em pedaços de 1 MB)
+// -----------------------------------------------------------------------------
+
+const MEDIA_CHUNK_SIZE = 1024 * 1024; // 1 MB por linha (limite do D1: 2 MB por valor)
+const MEDIA_MAX_BYTES = 60 * 1024 * 1024; // 60 MB por arquivo
+const MEDIA_ALLOWED_TYPES = /^(image\/(jpeg|png|webp|gif|avif)|video\/(mp4|webm|quicktime))$/;
+const MEDIA_PATH = '/media/';
+
+async function ensureMediaTables(env: Env): Promise<void> {
+  await env.DB.batch([
+    env.DB.prepare(
+      'CREATE TABLE IF NOT EXISTS media_files (key TEXT PRIMARY KEY, mime TEXT NOT NULL, size INTEGER NOT NULL, chunk_size INTEGER NOT NULL, chunks INTEGER NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)'
+    ),
+    env.DB.prepare(
+      'CREATE TABLE IF NOT EXISTS media_chunks (key TEXT NOT NULL, idx INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY (key, idx))'
+    ),
+  ]);
+}
+
+/** Extrai a chave de mídia de uma URL deste Worker (…/media/<key>), ou null. */
+function mediaKeyFromUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const i = value.indexOf(MEDIA_PATH);
+  if (i === -1) return null;
+  const key = value.slice(i + MEDIA_PATH.length).split(/[?#]/)[0];
+  return /^[a-z0-9-]{8,80}$/.test(key) ? key : null;
+}
+
+async function deleteMediaKeys(env: Env, keys: (string | null)[]): Promise<void> {
+  const unique = [...new Set(keys.filter((k): k is string => Boolean(k)))];
+  if (unique.length === 0) return;
+  try {
+    await ensureMediaTables(env);
+    await env.DB.batch(
+      unique.flatMap((k) => [
+        env.DB.prepare('DELETE FROM media_chunks WHERE key = ?').bind(k),
+        env.DB.prepare('DELETE FROM media_files WHERE key = ?').bind(k),
+      ])
+    );
+  } catch {
+    // limpeza é "melhor esforço": nunca bloqueia a operação principal
+  }
+}
+
+async function handleMediaUpload(request: Request, env: Env, url: URL): Promise<Response> {
+  const mime = (request.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
+  if (!MEDIA_ALLOWED_TYPES.test(mime)) {
+    return json({ error: `Tipo de arquivo não suportado: ${mime || 'desconhecido'}` }, 415);
+  }
+  const declared = Number(request.headers.get('Content-Length') || '0');
+  if (declared > MEDIA_MAX_BYTES) {
+    return json({ error: 'Arquivo acima de 60 MB. Comprima o vídeo e tente novamente.' }, 413);
+  }
+
+  const bytes = new Uint8Array(await request.arrayBuffer());
+  if (bytes.byteLength === 0) return json({ error: 'Arquivo vazio' }, 400);
+  if (bytes.byteLength > MEDIA_MAX_BYTES) {
+    return json({ error: 'Arquivo acima de 60 MB. Comprima o vídeo e tente novamente.' }, 413);
+  }
+
+  await ensureMediaTables(env);
+  const slot = Math.max(0, Math.min(99, Number(url.searchParams.get('slot')) || 0));
+  const key = `s${slot}-${Date.now().toString(36)}-${toHex(crypto.getRandomValues(new Uint8Array(6)))}`;
+  const chunks = Math.ceil(bytes.byteLength / MEDIA_CHUNK_SIZE);
+
+  try {
+    // Grava em lotes pequenos para não estourar o limite de tamanho de cada chamada ao D1
+    for (let start = 0; start < chunks; start += 4) {
+      const stmts = [];
+      for (let idx = start; idx < Math.min(chunks, start + 4); idx++) {
+        const part = bytes.subarray(idx * MEDIA_CHUNK_SIZE, (idx + 1) * MEDIA_CHUNK_SIZE);
+        stmts.push(env.DB.prepare('INSERT INTO media_chunks (key, idx, data) VALUES (?, ?, ?)').bind(key, idx, part));
+      }
+      await env.DB.batch(stmts);
+    }
+    await env.DB.prepare('INSERT INTO media_files (key, mime, size, chunk_size, chunks) VALUES (?, ?, ?, ?, ?)')
+      .bind(key, mime, bytes.byteLength, MEDIA_CHUNK_SIZE, chunks)
+      .run();
+  } catch (err) {
+    await deleteMediaKeys(env, [key]);
+    throw err;
+  }
+
+  return json({ success: true, key, url: `${url.origin}${MEDIA_PATH}${key}`, size: bytes.byteLength, mime });
+}
+
+/** Entrega um arquivo de mídia com suporte a Range (necessário para vídeo no iPhone/Safari). */
+async function handleMediaGet(request: Request, env: Env, key: string): Promise<Response> {
+  const baseHeaders: Record<string, string> = {
+    'Access-Control-Allow-Origin': '*',
+    'X-Content-Type-Options': 'nosniff',
+    'Accept-Ranges': 'bytes',
+  };
+  let meta: { mime: string; size: number; chunk_size: number; chunks: number } | null = null;
+  try {
+    meta = await env.DB.prepare('SELECT mime, size, chunk_size, chunks FROM media_files WHERE key = ?')
+      .bind(key)
+      .first();
+  } catch {
+    meta = null;
+  }
+  if (!meta) return new Response('Mídia não encontrada', { status: 404, headers: baseHeaders });
+
+  const size = Number(meta.size);
+  const chunkSize = Number(meta.chunk_size);
+  let start = 0;
+  let end = size - 1;
+  let partial = false;
+
+  const range = request.headers.get('Range');
+  if (range) {
+    const m = /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+    if (m) {
+      if (m[1] === '' && m[2] !== '') {
+        start = Math.max(0, size - Number(m[2]));
+      } else {
+        start = Number(m[1] || 0);
+        if (m[2] !== '') end = Math.min(size - 1, Number(m[2]));
+      }
+      if (start > end || start >= size) {
+        return new Response(null, { status: 416, headers: { ...baseHeaders, 'Content-Range': `bytes */${size}` } });
+      }
+      partial = true;
+    }
+  }
+
+  const firstIdx = Math.floor(start / chunkSize);
+  const lastIdx = Math.floor(end / chunkSize);
+  const rows = await env.DB.prepare('SELECT idx, data FROM media_chunks WHERE key = ? AND idx BETWEEN ? AND ? ORDER BY idx')
+    .bind(key, firstIdx, lastIdx)
+    .all<{ idx: number; data: ArrayBuffer | number[] }>();
+
+  const out = new Uint8Array(end - start + 1);
+  let offset = 0;
+  for (const row of rows.results) {
+    const chunk = row.data instanceof ArrayBuffer ? new Uint8Array(row.data) : Uint8Array.from(row.data as number[]);
+    const chunkStart = Number(row.idx) * chunkSize;
+    const from = Math.max(0, start - chunkStart);
+    const to = Math.min(chunk.byteLength, end - chunkStart + 1);
+    if (to > from) {
+      out.set(chunk.subarray(from, to), offset);
+      offset += to - from;
+    }
+  }
+
+  return new Response(out, {
+    status: partial ? 206 : 200,
+    headers: {
+      ...baseHeaders,
+      'Content-Type': meta.mime,
+      'Content-Length': String(out.byteLength),
+      // A chave muda a cada envio, então o arquivo nunca muda: pode ficar em cache para sempre
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      ...(partial ? { 'Content-Range': `bytes ${start}-${end}/${size}` } : {}),
+    },
+  });
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: NO_CACHE_HEADERS });
 }
@@ -201,9 +360,24 @@ export default {
       return new Response(null, { headers: CORS_HEADERS });
     }
 
+    // GET /media/<key> - Arquivos da galeria guardados no D1 (público, com cache longo)
+    if (url.pathname.startsWith(MEDIA_PATH) && (request.method === 'GET' || request.method === 'HEAD')) {
+      const key = mediaKeyFromUrl(url.pathname);
+      if (!key) return new Response('Mídia não encontrada', { status: 404 });
+      return handleMediaGet(request, env, key);
+    }
+
     // API Routes for Cloudflare D1
     if (url.pathname.startsWith('/api/')) {
       try {
+        // POST /api/media?slot=N - Envia foto/vídeo (corpo binário) e devolve a URL pública (PROTECTED)
+        if (url.pathname === '/api/media' && request.method === 'POST') {
+          if (!(await isAuthorized(request, env))) {
+            return json({ error: 'Acesso não autorizado' }, 401);
+          }
+          return handleMediaUpload(request, env, url);
+        }
+
         // POST /api/auth/login - Confere usuário/senha no servidor e devolve token assinado
         if (url.pathname === '/api/auth/login' && request.method === 'POST') {
           if (!env.SESSION_SECRET) {
@@ -582,6 +756,11 @@ export default {
           const caption = sanitize(body.caption, 300);
           const category = sanitize(body.category, 50) || 'ElChicano';
 
+          // Mídia antiga do slot (no D1) que deixa de ser usada será apagada depois do upsert
+          const previous = await env.DB.prepare('SELECT media_url, thumbnail_url FROM gallery_posts WHERE slot_number = ?')
+            .bind(slotNum)
+            .first<{ media_url: string; thumbnail_url: string }>();
+
           await env.DB.prepare(`
             INSERT INTO gallery_posts (slot_number, type, media_url, thumbnail_url, permalink, caption, category, is_active, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
@@ -597,6 +776,14 @@ export default {
           `)
             .bind(slotNum, type, mediaUrl, thumbUrl, permalink, caption, category)
             .run();
+
+          if (previous) {
+            const keep = new Set([mediaKeyFromUrl(mediaUrl), mediaKeyFromUrl(thumbUrl)]);
+            await deleteMediaKeys(
+              env,
+              [mediaKeyFromUrl(previous.media_url), mediaKeyFromUrl(previous.thumbnail_url)].filter((k) => !keep.has(k))
+            );
+          }
 
           return new Response(JSON.stringify({ success: true, message: 'Slot de galeria atualizado' }), {
             headers: NO_CACHE_HEADERS,
@@ -614,11 +801,24 @@ export default {
 
           const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
           if (body.slot_number) {
-            await env.DB.prepare('DELETE FROM gallery_posts WHERE slot_number = ?')
-              .bind(Number(body.slot_number))
-              .run();
+            const slotNum = Number(body.slot_number);
+            const previous = await env.DB.prepare('SELECT media_url, thumbnail_url FROM gallery_posts WHERE slot_number = ?')
+              .bind(slotNum)
+              .first<{ media_url: string; thumbnail_url: string }>();
+            await env.DB.prepare('DELETE FROM gallery_posts WHERE slot_number = ?').bind(slotNum).run();
+            if (previous) {
+              await deleteMediaKeys(env, [mediaKeyFromUrl(previous.media_url), mediaKeyFromUrl(previous.thumbnail_url)]);
+            }
           } else if (url.searchParams.get('all') === 'true') {
+            const all = await env.DB.prepare('SELECT media_url, thumbnail_url FROM gallery_posts').all<{
+              media_url: string;
+              thumbnail_url: string;
+            }>();
             await env.DB.prepare('DELETE FROM gallery_posts').run();
+            await deleteMediaKeys(
+              env,
+              all.results.flatMap((r) => [mediaKeyFromUrl(r.media_url), mediaKeyFromUrl(r.thumbnail_url)])
+            );
           } else {
             return new Response(JSON.stringify({ error: 'slot_number é obrigatório' }), {
               status: 400,
