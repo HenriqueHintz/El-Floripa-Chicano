@@ -47,7 +47,9 @@ import {
   ShoppingBag,
   RotateCcw,
   Check,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Menu,
+  X
 } from 'lucide-react';
 import { 
   saveMediaToDB, 
@@ -79,6 +81,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   });
 
   const [activeTab, setActiveTab] = useState<'leads' | 'gallery' | 'video' | 'menu_sync' | 'security'>('leads');
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  // Menu mobile: trava o scroll do fundo e fecha com Esc
+  useEffect(() => {
+    if (!isMobileNavOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsMobileNavOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [isMobileNavOpen]);
   const [leads, setLeads] = useState<FranchiseLead[]>([]);
   const [galleryPosts, setGalleryPosts] = useState<D1GalleryPost[]>([]);
   const [isLoadingLeads, setIsLoadingLeads] = useState(true);
@@ -323,9 +341,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     );
     if (!confirmDelete) return;
 
-    // Instant optimistic UI update
+    // Atualização otimista; desfaz se o servidor recusar
+    const snapshot = leads;
     setLeads((prev) => prev.filter((l) => String(l.id) !== String(id)));
-    await deleteFranchiseLead(id);
+    const ok = await deleteFranchiseLead(id);
+    if (!ok) {
+      setLeads(snapshot);
+      alert('Não foi possível excluir o lead no servidor. Verifique sua conexão ou faça login novamente.');
+    }
   };
 
   const handleClearAllLeads = async () => {
@@ -335,8 +358,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     );
     if (!confirmClear) return;
 
+    const snapshot = leads;
     setLeads([]);
-    await clearAllFranchiseLeads();
+    const ok = await clearAllFranchiseLeads();
+    if (!ok) {
+      setLeads(snapshot);
+      alert('Não foi possível excluir os leads no servidor. Verifique sua conexão ou faça login novamente.');
+    }
   };
 
   const handleSelectSlot = (slotNum: number) => {
@@ -422,10 +450,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       });
 
       // 2. Direct Auto-Save to IndexedDB, LocalStorage & D1 (Broadcasting in 0ms to public site)
-      await saveD1GalleryPost(updatedPost);
+      const ok = await saveD1GalleryPost(updatedPost);
 
-      setSaveStatus(`Slot #${targetSlot} salvo e ativo no site!`);
-      setTimeout(() => setSaveStatus(''), 4000);
+      setSaveStatus(
+        ok
+          ? `Slot #${targetSlot} salvo e ativo no site!`
+          : isVideo
+            ? `Vídeo salvo só neste aparelho — vídeos ainda não são publicados no site`
+            : `Salvo só neste aparelho — falha ao publicar no site`
+      );
+      setTimeout(() => setSaveStatus(''), ok ? 4000 : 7000);
     } catch (err) {
       console.error('File upload error:', err);
       const errMsg = err instanceof Error ? err.message : 'Tente novamente';
@@ -528,10 +562,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       });
 
       // 2. Persist to storage & broadcast in real-time
-      await saveD1GalleryPost(updatedPost);
+      const ok = await saveD1GalleryPost(updatedPost);
 
-      setSaveStatus('Salvo com sucesso!');
-      setTimeout(() => setSaveStatus(''), 3000);
+      setSaveStatus(ok ? 'Salvo com sucesso!' : 'Salvo só neste aparelho — falha ao publicar no site');
+      setTimeout(() => setSaveStatus(''), ok ? 3000 : 6000);
     } catch {
       setSaveStatus('Erro ao salvar');
     }
@@ -545,7 +579,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
 
     setSaveStatus('Zerando slot...');
     try {
-      await clearD1GallerySlot(activeSlotNumber);
+      const ok = await clearD1GallerySlot(activeSlotNumber);
 
       const blankSlot: D1GalleryPost = {
         slot_number: activeSlotNumber,
@@ -566,8 +600,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         return [...filtered, blankSlot].sort((a, b) => Number(a.slot_number) - Number(b.slot_number));
       });
 
-      setSaveStatus(`Slot #${activeSlotNumber} zerado com sucesso!`);
-      setTimeout(() => setSaveStatus(''), 3500);
+      setSaveStatus(
+        ok
+          ? `Slot #${activeSlotNumber} zerado com sucesso!`
+          : `Falha ao excluir o Slot #${activeSlotNumber} no servidor — tente novamente`
+      );
+      setTimeout(() => setSaveStatus(''), ok ? 3500 : 6000);
     } catch {
       setSaveStatus('Erro ao zerar slot.');
     }
@@ -647,6 +685,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     return matchesFilter && matchesSearch;
   });
 
+  type AdminTab = typeof activeTab;
+  const neutralBadge = () => 'bg-white text-[#001219] border border-[#001219]/20';
+  const countBadge = (active: boolean) =>
+    active ? 'bg-[#001219] text-[#EE9B00]' : 'bg-white text-[#001219] border border-[#001219]/20';
+  const navItems: {
+    id: AdminTab;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    iconClass?: string;
+    badge: string | number;
+    badgeClass: (active: boolean) => string;
+  }[] = [
+    { id: 'leads', label: 'Leads Franquia', icon: Users, badge: leads.length, badgeClass: countBadge },
+    { id: 'gallery', label: 'Feed Instagram', icon: Instagram, badge: '7 Slots', badgeClass: neutralBadge },
+    {
+      id: 'video',
+      label: 'Vídeo Franquia',
+      icon: Video,
+      badge: videoConfig.isEnabled ? 'Ativo' : 'Oculto',
+      badgeClass: () =>
+        videoConfig.isEnabled
+          ? 'bg-[#0A9396] text-white border border-[#001219]'
+          : 'bg-white text-[#001219]/50 border border-[#001219]/20',
+    },
+    {
+      id: 'menu_sync',
+      label: 'Atualizar Cardápio',
+      icon: ShoppingBag,
+      iconClass: 'text-[#AE2012]',
+      badge: `${liveMenuData.products.length} itens`,
+      badgeClass: countBadge,
+    },
+    { id: 'security', label: 'Segurança & Senha', icon: ShieldCheck, iconClass: 'text-[#005F73]', badge: 'PBKDF2', badgeClass: neutralBadge },
+  ];
+  const activeNav = navItems.find((n) => n.id === activeTab) ?? navItems[0];
+
   return (
     <div className="min-h-screen bg-[#FAF5E8] text-[#001219] flex flex-col md:flex-row relative selection:bg-[#EE9B00] selection:text-[#001219]">
       
@@ -658,142 +732,111 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       <div className="fixed top-0 right-0 w-[500px] h-[500px] rounded-full bg-[#EE9B00]/10 blur-[140px] pointer-events-none" />
       <div className="fixed bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-[#005F73]/10 blur-[140px] pointer-events-none" />
 
-      {/* SIDEBAR NAVIGATION (Desktop & Mobile Responsive) */}
-      <aside className="w-full md:w-72 bg-white border-b-4 md:border-b-0 md:border-r-4 border-[#001219] p-4 sm:p-6 flex flex-col justify-between shrink-0 z-20 shadow-[4px_0px_0px_#001219]">
+      {/* BARRA SUPERIOR MOBILE (hambúrguer) */}
+      <header className="md:hidden sticky top-0 z-30 flex items-center justify-between gap-3 px-3 py-2 bg-white border-b-2 border-[#001219] shadow-[0_2px_0_#001219]">
+        <button
+          type="button"
+          onClick={() => setIsMobileNavOpen(true)}
+          aria-label="Abrir menu"
+          aria-expanded={isMobileNavOpen}
+          aria-controls="admin-sidebar"
+          className="p-2 rounded-lg border-2 border-[#001219] bg-[#FAF5E8] active:translate-y-px"
+        >
+          <Menu className="w-4 h-4" />
+        </button>
+        <div className="flex items-center gap-2 min-w-0">
+          <Logo className="h-7 w-auto shrink-0" />
+          <span className="font-mono text-[10px] uppercase font-bold text-[#CA6702] tracking-wider truncate">
+            {activeNav.label}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          aria-label="Encerrar sessão"
+          className="p-2 rounded-lg border-2 border-[#001219] bg-[#FAF5E8] text-[#AE2012]"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
+      </header>
+
+      {/* Fundo escuro do menu mobile */}
+      {isMobileNavOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-[#001219]/50 backdrop-blur-[2px]"
+          onClick={() => setIsMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* MENU LATERAL: gaveta no mobile, fixo no desktop */}
+      <aside
+        id="admin-sidebar"
+        className={`fixed md:sticky top-0 left-0 z-50 md:z-20 h-[100dvh] md:h-screen w-[78vw] max-w-[280px] md:w-72 md:max-w-none bg-white border-r-4 border-[#001219] p-4 md:p-6 flex flex-col justify-between shrink-0 shadow-[4px_0px_0px_#001219] overflow-y-auto transition-transform duration-300 ease-out md:translate-x-0 ${
+          isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        aria-label="Menu do painel"
+      >
         <div>
-          {/* Brand Header with Clean Logo */}
-          <div className="flex items-center justify-between md:justify-start gap-3.5 mb-6 md:mb-8 pb-4 md:pb-6 border-b-2 border-[#001219]/10">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-auto flex items-center justify-center shrink-0">
-                <Logo className="h-11 w-auto" />
-              </div>
+          <div className="flex items-center justify-between gap-3 mb-5 md:mb-8 pb-4 md:pb-6 border-b-2 border-[#001219]/10">
+            <div className="flex items-center gap-2.5 md:gap-3">
+              <Logo className="h-9 md:h-11 w-auto shrink-0" />
               <div className="flex flex-col text-left">
-                <h2 className="font-display font-black text-lg uppercase text-[#001219] leading-none tracking-tight">
+                <h2 className="font-display font-black text-base md:text-lg uppercase text-[#001219] leading-none tracking-tight">
                   El Chicano
                 </h2>
-                <p className="font-mono text-xs uppercase font-bold text-[#CA6702] tracking-wider mt-1">
+                <p className="font-mono text-[10px] md:text-xs uppercase font-bold text-[#CA6702] tracking-wider mt-1">
                   Painel Gestão
                 </p>
               </div>
             </div>
-
-            {/* Quick Mobile Logout Action */}
             <button
               type="button"
-              onClick={handleLogout}
-              className="md:hidden p-2.5 rounded-xl bg-[#FAF5E8] hover:bg-[#AE2012]/15 text-[#AE2012] border-2 border-[#001219] text-xs font-mono transition-colors shadow-sm"
-              title="Encerrar Sessão"
+              onClick={() => setIsMobileNavOpen(false)}
+              aria-label="Fechar menu"
+              className="md:hidden p-1.5 rounded-lg border-2 border-[#001219]/20 text-[#001219]"
             >
-              <LogOut className="w-4 h-4" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Navigation Menu */}
-          <nav className="flex flex-row md:flex-col gap-2.5 overflow-x-auto pb-1 md:pb-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab('leads')}
-              className={`flex-1 md:w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-mono text-xs uppercase font-bold transition-all cursor-pointer border-2 shrink-0 ${
-                activeTab === 'leads'
-                  ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[3px_3px_0px_#001219]'
-                  : 'bg-[#FAF5E8] text-[#001219]/70 border-[#001219]/15 hover:border-[#001219] hover:bg-white hover:text-[#001219]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                <span>Leads Franquia</span>
-              </div>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                activeTab === 'leads' ? 'bg-[#001219] text-[#EE9B00]' : 'bg-white text-[#001219] border border-[#001219]/20'
-              }`}>
-                {leads.length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('gallery')}
-              className={`flex-1 md:w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-mono text-xs uppercase font-bold transition-all cursor-pointer border-2 shrink-0 ${
-                activeTab === 'gallery'
-                  ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[3px_3px_0px_#001219]'
-                  : 'bg-[#FAF5E8] text-[#001219]/70 border-[#001219]/15 hover:border-[#001219] hover:bg-white hover:text-[#001219]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Instagram className="w-4 h-4" />
-                <span>Feed Instagram</span>
-              </div>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-white text-[#001219] border border-[#001219]/20">
-                7 Slots
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('video')}
-              className={`flex-1 md:w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-mono text-xs uppercase font-bold transition-all cursor-pointer border-2 shrink-0 ${
-                activeTab === 'video'
-                  ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[3px_3px_0px_#001219]'
-                  : 'bg-[#FAF5E8] text-[#001219]/70 border-[#001219]/15 hover:border-[#001219] hover:bg-white hover:text-[#001219]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Video className="w-4 h-4" />
-                <span>Vídeo Franquia</span>
-              </div>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                videoConfig.isEnabled ? 'bg-[#0A9396] text-white border border-[#001219]' : 'bg-white text-[#001219]/50 border border-[#001219]/20'
-              }`}>
-                {videoConfig.isEnabled ? 'Ativo' : 'Oculto'}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('menu_sync')}
-              className={`flex-1 md:w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-mono text-xs uppercase font-bold transition-all cursor-pointer border-2 shrink-0 ${
-                activeTab === 'menu_sync'
-                  ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[3px_3px_0px_#001219]'
-                  : 'bg-[#FAF5E8] text-[#001219]/70 border-[#001219]/15 hover:border-[#001219] hover:bg-white hover:text-[#001219]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4 text-[#AE2012]" />
-                <span>Atualizar Cardápio</span>
-              </div>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                activeTab === 'menu_sync' ? 'bg-[#001219] text-[#EE9B00]' : 'bg-white text-[#001219] border border-[#001219]/20'
-              }`}>
-                {liveMenuData.products.length} itens
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('security')}
-              className={`flex-1 md:w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-mono text-xs uppercase font-bold transition-all cursor-pointer border-2 shrink-0 ${
-                activeTab === 'security'
-                  ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[3px_3px_0px_#001219]'
-                  : 'bg-[#FAF5E8] text-[#001219]/70 border-[#001219]/15 hover:border-[#001219] hover:bg-white hover:text-[#001219]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#005F73]" />
-                <span>Segurança & Senha</span>
-              </div>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-white text-[#001219] border border-[#001219]/20">
-                PBKDF2
-              </span>
-            </button>
+          <nav className="flex flex-col gap-2 md:gap-2.5">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setIsMobileNavOpen(false);
+                  }}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`w-full flex items-center justify-between gap-2 px-3 md:px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl font-mono text-[11px] md:text-xs uppercase font-bold transition-all cursor-pointer border-2 ${
+                    isActive
+                      ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[3px_3px_0px_#001219]'
+                      : 'bg-[#FAF5E8] text-[#001219]/70 border-[#001219]/15 hover:border-[#001219] hover:bg-white hover:text-[#001219]'
+                  }`}
+                >
+                  <span className="flex items-center gap-2 text-left">
+                    <Icon className={`w-4 h-4 shrink-0 ${item.iconClass || ''}`} />
+                    <span>{item.label}</span>
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black whitespace-nowrap ${item.badgeClass(isActive)}`}>
+                    {item.badge}
+                  </span>
+                </button>
+              );
+            })}
           </nav>
         </div>
 
-        {/* Sidebar Bottom Actions (Desktop Only - Logout Only, No Voltar ao Site) */}
-        <div className="pt-4 md:pt-6 border-t-2 border-[#001219]/10 mt-4 md:mt-6 hidden md:flex flex-col gap-2">
+        <div className="pt-4 md:pt-6 border-t-2 border-[#001219]/10 mt-4 md:mt-6 flex flex-col gap-2">
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[#AE2012] hover:bg-[#AE2012]/10 border-2 border-[#AE2012]/30 hover:border-[#AE2012] bg-[#FAF5E8] font-mono text-xs uppercase font-bold transition-all cursor-pointer shadow-sm"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[#AE2012] hover:bg-[#AE2012]/10 border-2 border-[#AE2012]/30 hover:border-[#AE2012] bg-[#FAF5E8] font-mono text-[11px] md:text-xs uppercase font-bold transition-all cursor-pointer shadow-sm"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Encerrar Sessão</span>
@@ -802,13 +845,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 p-4 sm:p-8 md:p-10 overflow-y-auto max-h-screen">
+      <main className="flex-1 min-w-0 p-3 sm:p-6 md:p-10">
         
         {/* ================================================================= */}
         {/* TAB 1: LEADS DE FRANQUIA */}
         {/* ================================================================= */}
         {activeTab === 'leads' && (
-          <div className="max-w-6xl mx-auto flex flex-col gap-6">
+          <div className="max-w-6xl mx-auto flex flex-col gap-4 sm:gap-6">
             
             {/* Header & Export Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b-2 border-[#001219]/10 text-left">
@@ -816,7 +859,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 <span className="font-mono text-[10px] text-[#CA6702] uppercase font-bold tracking-widest">
                   Gestão Comercial
                 </span>
-                <h2 className="font-display font-black text-2xl sm:text-3xl text-[#001219] uppercase">
+                <h2 className="font-display font-black text-lg leading-tight sm:text-2xl md:text-3xl text-[#001219] uppercase">
                   Leads de Prospecção de Franquia
                 </h2>
               </div>
@@ -896,7 +939,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
               </div>
             ) : filteredLeads.length === 0 ? (
               <div className="py-16 text-center bg-white rounded-3xl border-3 border-[#001219] shadow-[6px_6px_0px_#001219] p-8">
-                <p className="font-display font-black text-xl text-[#001219] uppercase">Nenhum lead encontrado</p>
+                <p className="font-display font-black text-base sm:text-xl text-[#001219] uppercase">Nenhum lead encontrado</p>
                 <p className="font-sans text-xs text-[#001219]/60 mt-1">
                   Os interessados que preencherem o formulário na página de franquia aparecerão aqui automaticamente.
                 </p>
@@ -912,12 +955,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   return (
                     <div 
                       key={lead.id}
-                      className="bg-white border-3 border-[#001219] hover:border-[#EE9B00] rounded-2xl p-4 sm:p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 transition-all shadow-[4px_4px_0px_#001219] hover:-translate-y-0.5"
+                      className="bg-white border-3 border-[#001219] hover:border-[#EE9B00] rounded-xl sm:rounded-2xl p-3 sm:p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2.5 sm:gap-4 transition-all shadow-[3px_3px_0px_#001219] sm:shadow-[4px_4px_0px_#001219] hover:-translate-y-0.5"
                     >
                       {/* Left: Contact Info */}
                       <div className="flex flex-col gap-1 text-left w-full lg:w-auto">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h4 className="font-display font-black text-lg text-[#001219]">
+                          <h4 className="font-display font-black text-base sm:text-lg text-[#001219] leading-tight">
                             {lead.name}
                           </h4>
                           <span className="font-mono text-[9px] uppercase px-2 py-0.5 rounded-md bg-[#FAF5E8] border border-[#001219]/20 text-[#005F73] font-bold">
@@ -925,7 +968,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                           </span>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-sans text-[#001219]/75 mt-1">
+                        <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 text-[11px] sm:text-xs font-sans text-[#001219]/75 mt-0.5 sm:mt-1">
                           <span className="flex items-center gap-1.5 font-medium">
                             <Phone className="w-3.5 h-3.5 text-[#CA6702]" />
                             {lead.phone}
@@ -948,11 +991,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                       </div>
 
                       {/* Right: Actions and Status Selector */}
-                      <div className="flex items-center gap-2.5 w-full lg:w-auto justify-between lg:justify-end border-t lg:border-t-0 pt-3 lg:pt-0 border-[#001219]/10">
+                      <div className="flex items-center gap-2 w-full lg:w-auto justify-between lg:justify-end border-t lg:border-t-0 pt-2 sm:pt-3 lg:pt-0 border-[#001219]/10">
                         <select
                           value={lead.status || 'novo'}
                           onChange={(e) => handleStatusChange(lead.id!, e.target.value)}
-                          className="bg-[#FAF5E8] border-2 border-[#001219] rounded-xl px-3 py-1.5 font-mono text-xs uppercase font-bold text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219]"
+                          className="bg-[#FAF5E8] border-2 border-[#001219] rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 font-mono text-[10px] sm:text-xs uppercase font-bold text-[#001219] focus:outline-none focus:border-[#EE9B00] shadow-[2px_2px_0px_#001219] min-w-0 flex-1 sm:flex-none"
                         >
                           <option value="novo">🟢 Novo</option>
                           <option value="em_contato">🟡 Em Contato</option>
@@ -966,7 +1009,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                           href={whatsappLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-3.5 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-mono text-xs uppercase font-black flex items-center gap-1.5 transition-all border-2 border-[#001219] shadow-[2px_2px_0px_#001219] hover:shadow-[3px_3px_0px_#001219]"
+                          className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-mono text-[10px] sm:text-xs uppercase font-black flex items-center gap-1.5 transition-all border-2 border-[#001219] shadow-[2px_2px_0px_#001219] hover:shadow-[3px_3px_0px_#001219]"
                         >
                           <WhatsAppIcon className="w-3.5 h-3.5" />
                           <span>WhatsApp</span>
@@ -994,7 +1037,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         {/* TAB 2: FEED INSTAGRAM (7 SLOTS QUE ALIMENTAM A GALERIA) */}
         {/* ================================================================= */}
         {activeTab === 'gallery' && (
-          <div className="max-w-6xl mx-auto flex flex-col gap-6">
+          <div className="max-w-6xl mx-auto flex flex-col gap-4 sm:gap-6">
             
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b-2 border-[#001219]/10 text-left">
@@ -1002,17 +1045,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 <span className="font-mono text-[10px] text-[#005F73] uppercase font-bold tracking-widest">
                   Gestão Visual & Mídia
                 </span>
-                <h2 className="font-display font-black text-2xl sm:text-3xl text-[#001219] uppercase">
+                <h2 className="font-display font-black text-lg leading-tight sm:text-2xl md:text-3xl text-[#001219] uppercase">
                   Feed Instagram (7 Slots Dinâmicos)
                 </h2>
-                <p className="font-sans text-xs text-[#001219]/70 mt-1">
+                <p className="font-sans text-xs text-[#001219]/70 mt-1 hidden sm:block">
                   Cadastre e edite as fotos, vídeos, legendas e links oficiais de cada um dos 7 slots que alimentam a galeria do site em tempo real.
                 </p>
               </div>
             </div>
 
             {/* Slot Selector Strip (1 to 7) - Mobile Touch Friendly with Mini Visual Thumbnails */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+            <div className="grid grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2.5">
               {[1, 2, 3, 4, 5, 6, 7].map((num) => {
                 const isCurrent = activeSlotNumber === num;
                 const slotData = galleryPosts.find((p) => Number(p.slot_number) === num);
@@ -1023,16 +1066,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                     key={num}
                     type="button"
                     onClick={() => handleSelectSlot(num)}
-                    className={`p-2.5 rounded-2xl border-2 text-left flex flex-col justify-between transition-all cursor-pointer ${
+                    className={`p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl border-2 text-left flex flex-col justify-between transition-all cursor-pointer ${
                       isCurrent
-                        ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[4px_4px_0px_#001219] scale-102 font-bold ring-2 ring-[#001219]'
+                        ? 'bg-[#EE9B00] text-[#001219] border-[#001219] shadow-[2px_2px_0px_#001219] sm:shadow-[4px_4px_0px_#001219] font-bold'
                         : hasMedia
                         ? 'bg-white text-[#001219] border-2 border-[#001219] shadow-[2px_2px_0px_#001219] hover:border-[#EE9B00]'
                         : 'bg-[#FAF5E8] text-[#001219]/60 border-2 border-dashed border-[#001219]/30 hover:border-[#001219]'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-mono text-[10px] uppercase font-black">
+                      <span className="font-mono text-[8px] sm:text-[10px] uppercase font-black">
                         Slot #{String(num).padStart(2, '0')}
                       </span>
                       {hasMedia ? (
@@ -1075,12 +1118,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
             </div>
 
             {/* Slot Edit Form & Live Preview */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-5 sm:p-8 rounded-3xl border-3 border-[#001219] shadow-[6px_6px_0px_#001219]">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-3.5 sm:p-8 rounded-2xl sm:rounded-3xl border-3 border-[#001219] shadow-[6px_6px_0px_#001219]">
               
               {/* Form Column */}
               <form onSubmit={handleSaveSlot} className="lg:col-span-7 flex flex-col gap-4 text-left">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-display font-black text-xl text-[#001219] uppercase">
+                  <h3 className="font-display font-black text-base sm:text-xl text-[#001219] uppercase">
                     Configurando Slot #{String(activeSlotNumber).padStart(2, '0')}
                   </h3>
                   <span className="font-mono text-[10px] text-[#005F73] uppercase font-bold">
@@ -1105,7 +1148,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                     Selecione uma foto ou vídeo diretamente do seu smartphone ou computador. O arquivo é otimizado automaticamente para carregar instantaneamente.
                   </p>
 
-                  <label className="w-full flex flex-col items-center justify-center py-4 px-4 bg-white hover:bg-[#EE9B00]/10 border-2 border-[#001219] rounded-xl shadow-[3px_3px_0px_#001219] hover:shadow-[4px_4px_0px_#001219] cursor-pointer transition-all group">
+                  <label className="w-full flex flex-col items-center justify-center py-3 sm:py-4 px-3 sm:px-4 bg-white hover:bg-[#EE9B00]/10 border-2 border-[#001219] rounded-xl shadow-[3px_3px_0px_#001219] hover:shadow-[4px_4px_0px_#001219] cursor-pointer transition-all group">
                     <input
                       type="file"
                       accept="image/*,video/*"
@@ -1183,7 +1226,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <button
                     type="submit"
-                    className="py-3.5 px-6 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#001219] shadow-[4px_4px_0px_#001219] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="py-2.5 sm:py-3.5 px-4 sm:px-6 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#001219] shadow-[4px_4px_0px_#001219] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Save className="w-4 h-4" />
                     <span>Salvar Slot #{activeSlotNumber}</span>
@@ -1192,7 +1235,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   <button
                     type="button"
                     onClick={handleClearSlot}
-                    className="py-3.5 px-6 rounded-2xl bg-[#FAF5E8] hover:bg-[#AE2012] text-[#AE2012] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#AE2012] hover:border-[#001219] shadow-[4px_4px_0px_#AE2012] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="py-2.5 sm:py-3.5 px-4 sm:px-6 rounded-2xl bg-[#FAF5E8] hover:bg-[#AE2012] text-[#AE2012] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#AE2012] hover:border-[#001219] shadow-[4px_4px_0px_#AE2012] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
                     title={`Limpar e zerar o conteúdo do Slot #${activeSlotNumber}`}
                   >
                     <Trash2 className="w-4 h-4" />
@@ -1263,23 +1306,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         {/* TAB 3: VÍDEO DE APRESENTAÇÃO DA FRANQUIA */}
         {/* ================================================================= */}
         {activeTab === 'video' && (
-          <div className="max-w-4xl mx-auto flex flex-col gap-6 text-left">
+          <div className="max-w-4xl mx-auto flex flex-col gap-4 sm:gap-6 text-left">
             
             {/* Header */}
             <div className="pb-4 border-b-2 border-[#001219]/10">
               <span className="font-mono text-[10px] text-[#CA6702] uppercase font-bold tracking-widest">
                 Controle de Mídia
               </span>
-              <h2 className="font-display font-black text-2xl sm:text-3xl text-[#001219] uppercase">
+              <h2 className="font-display font-black text-lg leading-tight sm:text-2xl md:text-3xl text-[#001219] uppercase">
                 Vídeo de Apresentação da Franquia
               </h2>
-              <p className="font-sans text-xs text-[#001219]/70 mt-1">
+              <p className="font-sans text-xs text-[#001219]/70 mt-1 hidden sm:block">
                 Ative ou desative o vídeo e defina a URL do vídeo que será exibido aos interessados na página de conversão.
               </p>
             </div>
 
             {/* Video Settings Form */}
-            <form onSubmit={handleSaveVideo} className="bg-white p-6 sm:p-8 rounded-3xl border-3 border-[#001219] shadow-[6px_6px_0px_#001219] flex flex-col gap-5">
+            <form onSubmit={handleSaveVideo} className="bg-white p-3.5 sm:p-8 rounded-2xl sm:rounded-3xl border-3 border-[#001219] shadow-[6px_6px_0px_#001219] flex flex-col gap-5">
               
               {/* Enable / Disable Switch */}
               <div className="flex items-center justify-between p-4 rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
@@ -1325,7 +1368,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   Selecione o arquivo de vídeo (.mp4, .mov, .webm) do seu celular ou computador. O sistema extrai a capa do primeiro frame automaticamente!
                 </p>
 
-                <label className="w-full flex flex-col items-center justify-center py-4 px-4 bg-white hover:bg-[#EE9B00]/10 border-2 border-[#001219] rounded-xl shadow-[3px_3px_0px_#001219] hover:shadow-[4px_4px_0px_#001219] cursor-pointer transition-all group">
+                <label className="w-full flex flex-col items-center justify-center py-3 sm:py-4 px-3 sm:px-4 bg-white hover:bg-[#EE9B00]/10 border-2 border-[#001219] rounded-xl shadow-[3px_3px_0px_#001219] hover:shadow-[4px_4px_0px_#001219] cursor-pointer transition-all group">
                   <input
                     type="file"
                     accept="video/*"
@@ -1462,7 +1505,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
               <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <button
                   type="submit"
-                  className="py-3.5 px-6 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#001219] shadow-[4px_4px_0px_#001219] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="py-2.5 sm:py-3.5 px-4 sm:px-6 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#001219] shadow-[4px_4px_0px_#001219] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   <span>Salvar Configuração de Vídeo</span>
@@ -1471,7 +1514,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 <button
                   type="button"
                   onClick={handleClearVideo}
-                  className="py-3.5 px-6 rounded-2xl bg-[#FAF5E8] hover:bg-[#AE2012] text-[#AE2012] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#AE2012] hover:border-[#001219] shadow-[4px_4px_0px_#AE2012] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="py-2.5 sm:py-3.5 px-4 sm:px-6 rounded-2xl bg-[#FAF5E8] hover:bg-[#AE2012] text-[#AE2012] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#AE2012] hover:border-[#001219] shadow-[4px_4px_0px_#AE2012] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer"
                   title="Excluir o arquivo de vídeo e capa da franquia"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -1494,13 +1537,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         {/* TAB 4: SEGURANÇA & GOVERNANÇA DE SENHA */}
         {/* ================================================================= */}
         {activeTab === 'security' && (
-          <div className="max-w-4xl mx-auto flex flex-col gap-6 text-left">
+          <div className="max-w-4xl mx-auto flex flex-col gap-4 sm:gap-6 text-left">
             {/* Header */}
             <div className="pb-4 border-b-2 border-[#001219]/10">
               <span className="font-mono text-[10px] text-[#CA6702] uppercase font-bold tracking-widest">
                 Proteção Criptográfica
               </span>
-              <h2 className="font-display font-black text-2xl sm:text-3xl text-[#001219] uppercase">
+              <h2 className="font-display font-black text-lg leading-tight sm:text-2xl md:text-3xl text-[#001219] uppercase">
                 Segurança & Credenciais de Acesso
               </h2>
             </div>
@@ -1536,8 +1579,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
             </div>
 
             {/* Change Password Form */}
-            <div className="bg-white p-6 sm:p-8 rounded-3xl border-3 border-[#001219] shadow-[6px_6px_0px_#001219]">
-              <h3 className="font-display font-black text-xl text-[#001219] uppercase mb-1">
+            <div className="bg-white p-3.5 sm:p-8 rounded-2xl sm:rounded-3xl border-3 border-[#001219] shadow-[6px_6px_0px_#001219]">
+              <h3 className="font-display font-black text-base sm:text-xl text-[#001219] uppercase mb-1">
                 Alterar Senha do Administrador
               </h3>
               <p className="font-mono text-xs text-[#001219]/60 mb-6">
@@ -1602,7 +1645,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   <button
                     type="submit"
                     disabled={isUpdatingPwd}
-                    className="py-3.5 px-6 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#001219] shadow-[4px_4px_0px_#001219] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="py-2.5 sm:py-3.5 px-4 sm:px-6 rounded-2xl bg-[#EE9B00] hover:bg-[#CA6702] text-[#001219] hover:text-white font-display font-black text-xs uppercase tracking-wider border-3 border-[#001219] shadow-[4px_4px_0px_#001219] hover:shadow-[6px_6px_0px_#001219] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     <KeyRound className="w-4 h-4" />
                     <span>{isUpdatingPwd ? 'Derivando Hash Criptográfico...' : 'Atualizar Chave de Acesso'}</span>
@@ -1617,7 +1660,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         {/* TAB 4: ATUALIZAR CARDÁPIO (CARDÁPIOWEB DIRECT SYNC) */}
         {/* ================================================================= */}
         {activeTab === 'menu_sync' && (
-          <div className="max-w-6xl mx-auto flex flex-col gap-6">
+          <div className="max-w-6xl mx-auto flex flex-col gap-4 sm:gap-6">
             
             {/* Header & CardápioWeb URL Link */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b-2 border-[#001219]/10 text-left">
@@ -1626,7 +1669,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   <Sparkles className="w-3.5 h-3.5" />
                   Sincronização Oficial em Tempo Real
                 </span>
-                <h2 className="font-display font-black text-2xl sm:text-3xl text-[#001219] uppercase">
+                <h2 className="font-display font-black text-lg leading-tight sm:text-2xl md:text-3xl text-[#001219] uppercase">
                   Atualizar Cardápio do Site
                 </h2>
                 <p className="font-sans text-xs text-[#001219]/70 mt-1 max-w-2xl">
@@ -1714,23 +1757,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
 
               {/* Metrics Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6">
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
                   <span className="block font-mono text-[10px] text-[#001219]/60 uppercase font-bold">Total Produtos</span>
-                  <p className="font-display font-black text-2xl sm:text-3xl text-[#001219] mt-1">
+                  <p className="font-display font-black text-lg leading-tight sm:text-2xl md:text-3xl text-[#001219] mt-1">
                     {liveMenuData.products.length}
                   </p>
                   <span className="block font-mono text-[9px] text-[#0A9396] font-bold mt-1">No site agora</span>
                 </div>
 
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
                   <span className="block font-mono text-[10px] text-[#001219]/60 uppercase font-bold">Categorias</span>
-                  <p className="font-display font-black text-2xl sm:text-3xl text-[#001219] mt-1">
+                  <p className="font-display font-black text-lg leading-tight sm:text-2xl md:text-3xl text-[#001219] mt-1">
                     {liveMenuData.categories.length}
                   </p>
                   <span className="block font-mono text-[9px] text-[#CA6702] font-bold mt-1">Agrupamentos</span>
                 </div>
 
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
                   <span className="block font-mono text-[10px] text-[#001219]/60 uppercase font-bold">Origem API</span>
                   <p className="font-mono font-black text-sm sm:text-base text-[#001219] mt-2 truncate" title="CardápioWeb / Company 24759">
                     CardápioWeb
@@ -1738,7 +1781,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   <span className="block font-mono text-[9px] text-[#001219]/60 font-bold mt-1">Pocket Floripa</span>
                 </div>
 
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#FAF5E8] border-2 border-[#001219]/20">
                   <span className="block font-mono text-[10px] text-[#001219]/60 uppercase font-bold">Última Sincronização</span>
                   <p className="font-mono font-bold text-xs sm:text-sm text-[#001219] mt-2">
                     {liveMenuData.lastSyncAt 

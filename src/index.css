@@ -29,6 +29,19 @@
     font-family: var(--font-sans);
   }
 
+  /* Mobile: escala base menor (15px / 14px) — reduz proporcionalmente textos,
+     espaçamentos e botões baseados em rem em todas as seções, menus e no painel */
+  @media (max-width: 639px) {
+    html {
+      font-size: 93.75%;
+    }
+  }
+  @media (max-width: 374px) {
+    html {
+      font-size: 87.5%;
+    }
+  }
+
   body {
     overflow-x: clip;
     margin: 0;

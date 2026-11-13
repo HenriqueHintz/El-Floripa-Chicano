@@ -199,7 +199,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
           role="dialog"
           aria-modal="true"
           aria-label="Menu principal de navegação El Chicano"
-          className="md:hidden fixed inset-0 z-50 bg-[#F0F4F8] w-full h-[100dvh] flex flex-col justify-between p-5 sm:p-7 overflow-y-auto overscroll-contain animate-in fade-in duration-200"
+          className="md:hidden fixed inset-0 z-50 bg-[#F0F4F8] w-full h-[100dvh] flex flex-col justify-between p-4 sm:p-7 overflow-y-auto overscroll-contain animate-in fade-in duration-200"
         >
           {/* Top Bar: Brand Header & Close */}
           <div className="flex items-center justify-between pb-3.5 border-b border-[#001219]/15 shrink-0">
@@ -209,7 +209,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
                 onClick={(e) => handleLinkClick(e, '#hero-section')}
                 className="cursor-pointer"
               >
-                <Logo className="h-11 sm:h-12 w-auto" />
+                <Logo className="h-9 sm:h-12 w-auto" />
               </a>
 
               <div className="h-8 w-px bg-[#001219]/15" />
@@ -238,13 +238,13 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
                 key={link.label}
                 href={link.href}
                 onClick={(e) => handleLinkClick(e, link.href)}
-                className="group py-3.5 border-b border-[#001219]/10 flex items-center justify-between transition-colors cursor-pointer"
+                className="group py-2.5 sm:py-3.5 border-b border-[#001219]/10 flex items-center justify-between transition-colors cursor-pointer"
               >
                 <div className="flex items-baseline gap-3">
                   <span className="font-mono text-xs text-[#CA6702] font-black">
                     0{index + 1}
                   </span>
-                  <span className="font-display font-black text-2xl sm:text-3xl text-[#001219] group-hover:text-[#CA6702] uppercase tracking-tight transition-colors">
+                  <span className="font-display font-black text-xl sm:text-3xl text-[#001219] group-hover:text-[#CA6702] uppercase tracking-tight transition-colors">
                     {link.label}
                   </span>
                 </div>

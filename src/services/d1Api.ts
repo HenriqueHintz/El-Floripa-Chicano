@@ -202,7 +202,7 @@ export async function getFranchiseLeads(): Promise<FranchiseLead[]> {
   }
 
   try {
-    const res = await fetch(getApiUrl('/api/leads'), { headers });
+    const res = await fetch(getApiUrl('/api/leads'), { headers, cache: 'no-store' });
     if (res.ok) {
       const payload = await res.json();
       if (payload?.success && Array.isArray(payload.leads)) {
@@ -250,56 +250,57 @@ export async function updateFranchiseLeadStatus(id: number | string, status: str
   return true;
 }
 
-export async function deleteFranchiseLead(id: number | string): Promise<boolean> {
+function authHeaders(json = true): Record<string, string> {
+  const headers: Record<string, string> = json ? { 'Content-Type': 'application/json' } : {};
   const token = getActiveSessionToken();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+}
+
+/**
+ * Exclui um lead no D1. Só remove do cache local depois que o servidor confirmar,
+ * para que o lead não "volte" ao clicar em Atualizar.
+ */
+export async function deleteFranchiseLead(id: number | string): Promise<boolean> {
+  try {
+    const res = await fetch(getApiUrl('/api/leads'), {
+      method: 'DELETE',
+      headers: authHeaders(),
+      body: JSON.stringify({ id: Number(id) }),
+      cache: 'no-store',
+    });
+    if (!res.ok) return false;
+  } catch (err) {
+    console.warn('Erro de rede ao excluir lead no D1:', err);
+    return false;
   }
 
-  // 1. Remove from localStorage immediately
   try {
     const existing: FranchiseLead[] = JSON.parse(localStorage.getItem(LOCAL_STORAGE_LEADS_KEY) || '[]');
-    const updated = existing.filter((l) => String(l.id) !== String(id));
-    localStorage.setItem(LOCAL_STORAGE_LEADS_KEY, JSON.stringify(updated));
-  } catch (err) {
-    console.warn('Error deleting lead from localStorage:', err);
-  }
-
-  // 2. Remove from D1 if backend active
-  try {
-    await fetch(getApiUrl('/api/leads'), {
-      method: 'DELETE',
-      headers,
-      body: JSON.stringify({ id }),
-    });
+    localStorage.setItem(
+      LOCAL_STORAGE_LEADS_KEY,
+      JSON.stringify(existing.filter((l) => String(l.id) !== String(id)))
+    );
   } catch {}
-
   return true;
 }
 
 export async function clearAllFranchiseLeads(): Promise<boolean> {
-  const token = getActiveSessionToken();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  try {
+    const res = await fetch(getApiUrl('/api/leads?all=true'), {
+      method: 'DELETE',
+      headers: authHeaders(false),
+      cache: 'no-store',
+    });
+    if (!res.ok) return false;
+  } catch (err) {
+    console.warn('Erro de rede ao limpar leads no D1:', err);
+    return false;
   }
 
-  // 1. Clear in localStorage immediately
   try {
     localStorage.setItem(LOCAL_STORAGE_LEADS_KEY, JSON.stringify([]));
-  } catch (err) {
-    console.warn('Error clearing leads from localStorage:', err);
-  }
-
-  // 2. Clear in D1 if backend active
-  try {
-    await fetch(getApiUrl('/api/leads?all=true'), {
-      method: 'DELETE',
-      headers,
-    });
   } catch {}
-
   return true;
 }
 
@@ -335,21 +336,27 @@ const DEFAULT_GALLERY_SLOTS: D1GalleryPost[] = [1, 2, 3, 4, 5, 6, 7].map((num) =
 
 export async function getD1GalleryPosts(): Promise<D1GalleryPost[]> {
   let posts: D1GalleryPost[] = [];
+  let serverResponded = false;
 
   try {
-    const res = await fetch(getApiUrl('/api/gallery'));
+    const res = await fetch(getApiUrl('/api/gallery'), { cache: 'no-store' });
     if (res.ok) {
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         const payload = await res.json();
-        if (payload?.success && Array.isArray(payload.posts) && payload.posts.length > 0) {
-          posts = payload.posts;
+        if (payload?.success && Array.isArray(payload.posts)) {
+          // O servidor é a fonte da verdade: lista vazia significa "tudo excluído",
+          // não "use o cache local".
+          posts = (payload.posts as D1GalleryPost[]).filter(
+            (p) => !String(p.media_url || '').startsWith('blob:')
+          );
+          serverResponded = true;
         }
       }
     }
   } catch {}
 
-  if (posts.length === 0) {
+  if (!serverResponded) {
     try {
       const local = localStorage.getItem(LOCAL_STORAGE_GALLERY_KEY);
       if (local) posts = JSON.parse(local);
@@ -440,7 +447,28 @@ export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
     console.warn('LocalStorage save warning:', err);
   }
 
-  // 3. Re-fetch hydrated list directly from IndexedDB and broadcast in real-time
+  // 3. Envia ao D1 (fonte usada pelo site público) e aguarda a confirmação
+  let serverOk = false;
+  if (post.media_url?.startsWith('blob:')) {
+    // blob: só existe neste navegador — publicar quebraria a galeria para os visitantes
+    console.warn('Mídia local (blob:) não pode ser publicada no D1. Use foto ou link externo.');
+  } else if ((post.media_url?.length || 0) < 2000000) {
+    try {
+      const res = await fetch(getApiUrl('/api/gallery'), {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(post),
+        cache: 'no-store',
+      });
+      serverOk = res.ok;
+    } catch (err) {
+      console.warn('Erro de rede ao salvar slot no D1:', err);
+    }
+  } else {
+    console.warn('Mídia acima de 2 MB não é enviada ao D1.');
+  }
+
+  // 4. Rebroadcast com o estado atualizado
   try {
     const allHydrated = await getD1GalleryPosts();
     broadcastRealtime('GALLERY_UPDATED', allHydrated);
@@ -448,24 +476,7 @@ export async function saveD1GalleryPost(post: D1GalleryPost): Promise<boolean> {
     console.warn('Realtime broadcast error:', e);
   }
 
-  // 4. Optionally send to Cloudflare D1 if server is online
-  try {
-    const token = getActiveSessionToken();
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    if ((post.media_url?.length || 0) < 2000000) {
-      fetch(getApiUrl('/api/gallery'), {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(post),
-      }).catch(() => {});
-    }
-  } catch {}
-
-  return true;
+  return serverOk;
 }
 
 /**
@@ -499,27 +510,27 @@ export async function clearD1GallerySlot(slotNumber: number): Promise<boolean> {
     console.warn('Error clearing slot in localStorage:', err);
   }
 
-  // 3. Hydrate & Broadcast instantly across all components & tabs
+  // 4. Exclui no D1 (fonte usada pelo site público) e só confirma se o servidor aceitar
+  let serverOk = false;
+  try {
+    const res = await fetch(getApiUrl('/api/gallery'), {
+      method: 'DELETE',
+      headers: authHeaders(),
+      body: JSON.stringify({ slot_number: slotNum }),
+      cache: 'no-store',
+    });
+    serverOk = res.ok;
+  } catch (err) {
+    console.warn('Erro de rede ao excluir slot no D1:', err);
+  }
+
+  // 5. Rebroadcast com o estado real do servidor
   try {
     const allHydrated = await getD1GalleryPosts();
     broadcastRealtime('GALLERY_UPDATED', allHydrated);
-  } catch (e) {
-    console.warn('Realtime broadcast error on clear slot:', e);
-  }
-
-  // 4. Optionally clear in D1
-  try {
-    const token = getActiveSessionToken();
-    if (token) {
-      fetch(getApiUrl('/api/gallery'), {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ slot_number: slotNum }),
-      }).catch(() => {});
-    }
   } catch {}
 
-  return true;
+  return serverOk;
 }
 
 // -----------------------------------------------------------------------------

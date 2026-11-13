@@ -24,6 +24,8 @@ export const Franchise: React.FC<FranchiseProps> = ({ onNavigateToFranchise }) =
           src="/images/sections/franquia-bg-horizontal.webp"
           alt="Seja um Franqueado El Chicano"
           className="w-full h-full object-cover object-center absolute inset-0 pointer-events-none select-none z-0"
+          loading="lazy"
+          decoding="async"
         />
         {/* Gradiente suave apenas no lado esquerdo para destacar o texto sem cobrir a arte da direita */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#001219]/75 via-[#001219]/30 to-transparent pointer-events-none z-[1]" />
@@ -66,6 +68,10 @@ export const Franchise: React.FC<FranchiseProps> = ({ onNavigateToFranchise }) =
         <img
           src="/images/sections/franquia-bg.webp"
           alt="Seja um Franqueado El Chicano"
+          width={896}
+          height={1152}
+          loading="lazy"
+          decoding="async"
           className="w-full h-auto block select-none pointer-events-none"
         />
         <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[#001219]/95 via-[#001219]/50 to-transparent pointer-events-none" />

@@ -7,7 +7,7 @@ export interface Env {
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'SAMEORIGIN',
@@ -302,13 +302,44 @@ export default {
           });
         }
 
-        // GET /api/gallery - Return active gallery posts (PUBLIC with edge caching)
+        // DELETE /api/leads - Delete one lead ({ id }) or all leads (?all=true) (PROTECTED)
+        if (url.pathname === '/api/leads' && request.method === 'DELETE') {
+          if (!isAuthorized(request, env)) {
+            return new Response(JSON.stringify({ error: 'Acesso não autorizado' }), {
+              status: 401,
+              headers: NO_CACHE_HEADERS,
+            });
+          }
+
+          if (url.searchParams.get('all') === 'true') {
+            const res = await env.DB.prepare('DELETE FROM franchise_leads').run();
+            return new Response(JSON.stringify({ success: true, deleted: res.meta?.changes ?? 0 }), {
+              headers: NO_CACHE_HEADERS,
+            });
+          }
+
+          const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+          const id = Number(body.id);
+          if (!Number.isFinite(id) || id <= 0) {
+            return new Response(JSON.stringify({ error: 'id numérico é obrigatório' }), {
+              status: 400,
+              headers: NO_CACHE_HEADERS,
+            });
+          }
+
+          const res = await env.DB.prepare('DELETE FROM franchise_leads WHERE id = ?').bind(id).run();
+          return new Response(JSON.stringify({ success: true, deleted: res.meta?.changes ?? 0 }), {
+            headers: NO_CACHE_HEADERS,
+          });
+        }
+
+        // GET /api/gallery - Return active gallery posts (PUBLIC, sem cache: exclusões aparecem na hora)
         if (url.pathname === '/api/gallery' && request.method === 'GET') {
           const postsRes = await env.DB.prepare(
             'SELECT * FROM gallery_posts WHERE is_active = 1 ORDER BY slot_number ASC'
           ).all();
           return new Response(JSON.stringify({ success: true, posts: postsRes.results }), {
-            headers: CACHE_HEADERS,
+            headers: NO_CACHE_HEADERS,
           });
         }
 
@@ -343,6 +374,13 @@ export default {
               status: 400,
               headers: CORS_HEADERS,
             });
+          }
+
+          if (typeof body.media_url === 'string' && body.media_url.startsWith('blob:')) {
+            return new Response(
+              JSON.stringify({ error: 'URLs blob: só existem no navegador de origem e não podem ser publicadas' }),
+              { status: 400, headers: NO_CACHE_HEADERS }
+            );
           }
 
           const slotNum = Number(body.slot_number);
@@ -390,6 +428,11 @@ export default {
               .run();
           } else if (url.searchParams.get('all') === 'true') {
             await env.DB.prepare('DELETE FROM gallery_posts').run();
+          } else {
+            return new Response(JSON.stringify({ error: 'slot_number é obrigatório' }), {
+              status: 400,
+              headers: NO_CACHE_HEADERS,
+            });
           }
 
           return new Response(JSON.stringify({ success: true, message: 'Slot excluído com sucesso' }), {
